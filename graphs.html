@@ -1,0 +1,27 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Domestication of Cereal Grains</title>
+    <link rel="stylesheet" type="text/css" href="./style.css"></link>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.js"></script>
+    <script type="text/javascript" src="./util.js"></script>
+    <script type="text/javascript" src="./graphs.js"></script>
+    <script>
+
+    </script>
+</head>
+<body>
+    <canvas id="chart" tabindex="1" width="2400" height="1000"></canvas><br />
+    <div id="db" class="db-status">Database</div><br />
+    <label for="seed_selection">Harvesting strategy:</label>
+    <label for="run_selection">Run Name:</label>
+    <select id="run_selection">
+    </select><br /><br />
+    <button id="query">Query</button>   <div id="query_info">Awaiting Run Names</div><br /><br />
+    <button id="downloadpop">Download (Population Only)</button>  <br />
+    <button id="download">Download</button><br />
+    <button id="downloadwild">Download Wild</button><br />
+    <button id="downloaddome">Download Domestication</button><br />
+</body>
+</html>

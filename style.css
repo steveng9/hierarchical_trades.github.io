@@ -1,0 +1,121 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: flex-start; /* Align items at the top */
+    font-size: 12px; /* Reduced font size for compactness */
+    margin: 0; /* Remove default margin */
+}
+
+#gameWorld {
+    border: 1px solid black;
+    background-color: white;
+    margin-right: 15px; /* Reduced margin for compactness */
+}
+
+#controlPanel {
+    display: flex;
+    flex-direction: column; /* Stack child elements vertically */
+    width: 500px; /* Reduced width for compactness */
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between boxes in each column */
+}
+
+#parameters {
+    border: 2px solid #03ecd3;
+    padding: 8px; /* Reduced padding for compactness */
+    background-color: #f9f9f9;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    /*!* Flexbox styles for side-by-side layout *!*/
+    /*display: flex;*/
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two equal columns */
+    grid-row: 2; /* Place in the second row */
+    gap: 10px; /* Space between boxes in each column */
+
+
+}
+
+#parameters p {
+    margin-top: 0;
+    font-weight: bold;
+    font-size: 14px; /* Slightly smaller font */
+}
+
+#parameters label {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+#parameters input {
+    width: calc(100% - 10px); /* Adjusted for reduced padding */
+    padding: 2px;
+    box-sizing: border-box;
+    font-size: 12px;
+}
+
+button {
+    margin-top: 10px; /* Reduced spacing */
+    width: 100%;
+    padding: 5px;
+    background-color: #007bff;
+    color: white;
+    border: 1px solid blue;
+    cursor: pointer;
+    font-size: 14px; /* Slightly smaller font */
+}
+
+#parameters button:hover {
+    background-color: #0056b3;
+}
+
+.parameter-section {
+    border: 1px solid #ddd;
+    padding: 5px; /* Reduced padding for compactness */
+    margin-bottom: 8px; /* Reduced spacing between sections */
+    background-color: #f1f1f1;
+}
+
+.parameter-section h3 {
+    margin: 0 0 5px 0;
+    font-size: 13px; /* Slightly smaller header font */
+    font-weight: bold;
+    color: #333;
+}
+
+#options {
+    margin-top: 5px; /* Reduced spacing */
+    font-size: 12px; /* Smaller font for compactness */
+}
+
+#options input {
+    margin-right: 5px;
+}
+
+#options label {
+    margin-right: 10px;
+}
+
+/* Default style */
+.db-status {
+    border: 1px solid black;
+    text-align: center;
+    padding: 5px;
+    margin-bottom: 8px; /* Reduced spacing */
+    font-size: 12px; /* Smaller font */
+}
+
+.db-connected {
+    background-color: #28a745; /* Bootstrap success color */
+    border: 1px solid black;
+}
+
+.db-disconnected {
+    background-color: #dc3545; /* Bootstrap danger color */
+    border: 1px solid black;
+}

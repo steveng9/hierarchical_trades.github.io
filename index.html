@@ -1,0 +1,149 @@
+﻿
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Population Genetics Simulator</title>
+    <link rel="stylesheet" type="text/css" href="./style.css"></link>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.js"></script>
+    <script type="text/javascript" src="./assetmanager.js"></script>
+    <script type="text/javascript" src="./histogram.js"></script>
+    <script type="text/javascript" src="./graph.js"></script>
+    <script type="text/javascript" src="./variablehistogramviewer.js"></script>
+    <script type="text/javascript" src="./variableviewer.js"></script>
+    <script type="text/javascript" src="./humandataview.js"></script>
+    <script type="text/javascript" src="./gameengine.js"></script>
+    <script type="text/javascript" src="./util.js"></script>
+    <script type="text/javascript" src="./params.js"></script>
+    <script type="text/javascript" src="./gene.js"></script>
+    <script type="text/javascript" src="./automata.js"></script>
+    <script type="text/javascript" src="./human.js"></script>
+    <script type="text/javascript" src="./forest.js"></script>
+    <script type="text/javascript" src="./datamanager.js"></script>
+    <script type="text/javascript" src="./selectionmanager.js"></script>
+    <script type="text/javascript" src="./selectionview.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/graphology@0.24.0/dist/graphology.umd.min.js"></script> -->
+    <script type="text/javascript" src="./main.js"></script>
+</head>
+<body>    
+    <canvas id="gameWorld" width="1200" height="1900"></canvas>
+    <div id="controlPanel">
+        <div id="db" class="db-status">Database</div>
+
+        <p>Simulation Parameters</p>
+        <div id="parameters">
+
+            <div class="column">
+                <div class="parameter-section">
+                    <h3>Forest Parameters</h3>
+                </div>
+
+                <div class="parameter-section">
+                    <h3>Other Parameters</h3>
+                </div>
+            </div>
+
+
+            <div class="column">
+                <div class="parameter-section">
+                    <h3>Human Parameters</h3>
+                    <label for="initialHumans">Initial Humans:</label>
+                    <input type="number" id="initialHumans" /><br />
+
+                </div>
+            </div>
+
+        </div>
+
+        <button type="button" onclick="reset()">Reset Simulation</button>
+        <!-- <button type="button" onclick="harvest()">Harvest</button> -->
+        <button type="button" accesskey="a" onclick="pause()">Pause / Play</button>
+
+        <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
+
+
+        <!-- <div id="cy" style="width: 800px; height: 600px; border: 1px solid black;"></div> -->
+
+    </div>
+
+    <script>
+        window.onload = function () {
+            if (typeof PARAMS !== 'undefined') {
+                Object.keys(PARAMS).forEach(param => {
+                    let input = document.getElementById(param);
+                    if (input) {
+                        input.value = PARAMS[param];
+                    }
+                });
+                
+                // Set canvas size from PARAMS
+                const canvas = document.getElementById("gameWorld");
+                canvas.width = PARAMS.width;
+            }
+
+            
+            const canvas = document.getElementById("gameWorld");
+
+            // canvas.addEventListener("click", function (event) {
+            //     const rect = canvas.getBoundingClientRect();
+            //     const x = event.clientX - rect.left;
+            //     const y = event.clientY - rect.top;
+
+            //     if (x < PARAMS.width && y < PARAMS.height) {
+            //         gameEngine.automata.add_human_at(x, y);
+            //     }
+
+            // });
+
+            let isSpawning = false;
+            let isSelecting = false;
+
+            canvas.addEventListener("mousedown", function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (x < PARAMS.width && y < PARAMS.height) {
+                    if (e.shiftKey) {
+                        isSelecting = true;
+                        gameEngine.selection.beginSelection(x, y);
+                    } else {
+                        isSpawning = true;
+                        gameEngine.selection.beginSpawn(x, y);
+                    }
+                }
+            });
+            
+            canvas.addEventListener("mousemove", function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (x < PARAMS.width && y < PARAMS.height) {
+                    if (isSelecting) gameEngine.selection.updateSelection(x, y);
+                    if (isSpawning) gameEngine.selection.updateSpawn(x, y);
+                }
+                
+            });
+
+            canvas.addEventListener("mouseup", function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (isSelecting) gameEngine.selection.finishSelection(x, y);
+                if (isSpawning) gameEngine.selection.finishSpawn(x, y);
+                isSelecting = false;
+                isSpawning = false;
+            });
+
+        };
+
+    </script>
+</body>
+</html>
+
+
+
