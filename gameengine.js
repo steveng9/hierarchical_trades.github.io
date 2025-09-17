@@ -51,6 +51,7 @@ class GameEngine {
     constructor() {
         this.entities = [];
         this.graphs = [];
+        this.clickCapableGraphs = [];
         this.ctx = null;
         this.surfaceWidth = null;
         this.surfaceHeight = null;
@@ -60,6 +61,12 @@ class GameEngine {
         this.updateCount = 0;
         this.updatesPerSecond = 0;
         this.lastSecond = performance.now();
+
+        // Verify sim elements are correct
+        this.total_produced = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+        this.total_consumed = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+        this.total_existing_actual = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+        this.total_existing_expected = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
     }
     init(ctx) {
         this.ctx = ctx;
@@ -85,7 +92,7 @@ class GameEngine {
     }
     draw() {
         if (this.automata.generation % PARAMS.reportingPeriod === 0) {
-            this.ctx.clearRect(0, 0, PARAMS.width, PARAMS.height); // clear sim square only
+            this.ctx.clearRect(PARAMS.margin, PARAMS.margin, PARAMS.forestwidth, PARAMS.forestheight); // clear sim square only
             for (var i = 0; i < this.entities.length; i++) {
                 this.entities[i].draw(this.ctx);
             }
@@ -94,9 +101,12 @@ class GameEngine {
 //        for (var i = 0; i < this.entities.length; i++) {
 //            this.entities[i].draw(this.ctx);
 //        }
-            this.ctx.clearRect(0, PARAMS.height, this.ctx.canvas.width, this.ctx.canvas.height - PARAMS.height); // clear graphs only
+            this.ctx.clearRect(PARAMS.margin, PARAMS.margin + PARAMS.forestheight + PARAMS.margin, PARAMS.forestwidth, this.ctx.canvas.height - (PARAMS.margin + PARAMS.forestheight + PARAMS.margin)); // clear graphs only
             for (var i = 0; i < this.graphs.length; i++) {
                 this.graphs[i].draw(this.ctx);
+            }
+            for (var i = 0; i < this.clickCapableGraphs.length; i++) {
+                this.clickCapableGraphs[i].draw(this.ctx);
             }
 
             this.selection?.draw(this.ctx);
@@ -123,7 +133,6 @@ class GameEngine {
     }
 
     loop() {
-        var timeSinceLastTick = 0;
         if (isRunning) {
             this.clockTick = this.timer.tick();
             var loops = PARAMS.updatesPerDraw;
@@ -135,14 +144,23 @@ class GameEngine {
             
 
 
-            if (PARAMS.show_timing) {
+            if (PARAMS.show_debug_info) {
                 const now = performance.now();
                 const delta = now - this.lastSecond;
-                if (delta >= PARAMS.timing_update_interval) {
+                if (delta >= PARAMS.periodic_check_interval) {
+                    // sim speed
                     this.updatesPerSecond = this.updateCount / (delta / 1000);
                     this.updateCount = 0;
                     this.lastSecond = now;
+
+                    // total resources check
+                    for (let r = 0; r < (PARAMS.numResources); r++) {
+                        this.total_existing_actual[r] = this.automata.sum_all_resources(r);
+                        this.total_existing_expected[r] = this.total_produced[r] - this.total_consumed[r];
+                    }
                 }
+
+                
             }
         }
     }

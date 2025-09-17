@@ -5,7 +5,7 @@ class HumanDataView {
         this.lineHeight = 20; // spacing between lines of text
         this.maxRows = 20;    // prevent overflow if there are too many humans
         
-        this.panelWidth = 450;
+        this.panelWidth = PARAMS.leftpanelWidth;
         this.panelHeight = this.maxRows * this.lineHeight + 60; // + room for title
     }
 
@@ -32,6 +32,7 @@ class HumanDataView {
         // Column positions
         const colX = {
             id: this.x + 8,
+            work: this.x + 30,
             supply: this.x + 60,
             metabolism: this.x + 200,
             energy: this.x + this.panelWidth - 110
@@ -42,6 +43,7 @@ class HumanDataView {
         // Column headers
         ctx.font = "12px monospace";
         ctx.fillText("ID", colX.id, headerY);
+        ctx.fillText("Work", colX.work, headerY);
         ctx.fillText("Supply", colX.supply, headerY);
         ctx.fillText("Metabolism", colX.metabolism, headerY);
         ctx.fillText("Energy", colX.energy, headerY);
@@ -63,7 +65,11 @@ class HumanDataView {
             // ID
             ctx.fillStyle = "#000000";
             ctx.font = "12px monospace";
-            ctx.fillText(`H${human.id}`, colX.id, rowY);
+            ctx.fillText(`${human.id}`, colX.id, rowY);
+
+            // work
+            const work = human.is_laborer ? "L" : "P";
+            ctx.fillText(`${work}`, colX.work+5, rowY);
 
             // Supplies
             const supplies = human.supply.map(v => v.toFixed(1)).join(", ");

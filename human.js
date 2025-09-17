@@ -5,12 +5,12 @@ class Human {
         const defaults = {
             id: Human.lastHumanId + 1,
             energy: PARAMS.initialEnergy,
-            x: randomInt(PARAMS.width),
-            y: randomInt(PARAMS.height),
-            reach: sampleRightSkew(.01),
+            x: randomInt(PARAMS.forestwidth),
+            y: randomInt(PARAMS.forestheight),
+            reach: sampleRightSkew(.01) * .5,
             isSpawning: false
         };
-
+        
         // Merge defaults with overrides
         const {id, energy, reach, isSpawning, x, y} = { ...defaults, ...options };
 
@@ -25,19 +25,25 @@ class Human {
         this.age = 0;
         this.maxAge = generateNormalSample(PARAMS.maxHumanAge, PARAMS.maxHumanAge/20);
         this.socialReach = reach;
-        this.productivity = randomFloat(0, 1);
-        this.location = {x: 0, y: 0};
+        this.productivity = randomFloat(0, 1.2);
+        // this.productivity = .7;
+        // this.production_potential = this.calculate_production_potential();
+
         
         // this.energy = energy;
         this.metabolism = Array(PARAMS.numResources).fill(energy / PARAMS.numResources);
         this.maxEnergyPerResource = PARAMS.maxHumanEnergy / PARAMS.numResources;
         this.supply = Array(PARAMS.numResources).fill(0);
         this.alternativeSupply = Array(PARAMS.numAlternativeResources).fill(0);
-
+        
         // Trading-related
-        this.personal_valuation_factor = generateNormalSample(1, .1);
-        this.my_trades = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill([]);
+        // this.personal_valuation_factor = generateNormalSample(1, .1);
+        this.personal_valuation_factor = 1;
+        // this.my_trades = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill([]);
+        this.my_trades = [];
         this.resource_valuations = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(1);
+        this.volumeTradedFor = Array(PARAMS.numResources).fill(0);
+        this.totalRoyalties = Array(PARAMS.numResources).fill(0);
     }
 
     update() {
@@ -54,7 +60,7 @@ class Human {
         this.work();
 
         // interact with other humans
-        this.trade();
+        // this.trade();
 
         this.eat();
 
@@ -75,20 +81,20 @@ class Human {
         // point of location
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 5, 0, 2 * Math.PI); // radius 5 for a small dot
+        ctx.arc(this.forest.x + this.x, this.forest.y + this.y, 5, 0, 2 * Math.PI); // radius 5 for a small dot
         ctx.fill();
         ctx.closePath(); 
 
         // Social reach circle (only if toggled on)
         if (PARAMS.show_social_reach) {
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.socialReach, 0, 2 * Math.PI);
+            ctx.arc(this.forest.x + this.x, this.forest.y + this.y, this.socialReach, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.closePath();
 
             if (this.isSpawning) {
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.socialReach, 0, 2 * Math.PI);
+                ctx.arc(this.forest.x + this.x, this.forest.y + this.y, this.socialReach, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.closePath();
             }
@@ -97,21 +103,102 @@ class Human {
             // Human ID label
          ctx.font = "12px monospace";
         ctx.textBaseline = "middle";
-        ctx.fillText(`H${this.id}`, this.x + 8, this.y); // small offset to the right
+        ctx.fillText(`H${this.id}`, this.forest.x + this.x + 8, this.forest.y + this.y); // small offset to the right
+    }
+
+    calculate_production_potential() {
+        const sum_resources_here = [...Array(PARAMS.numResources).keys()].reduce((acc, r) => acc + this.forest.getConcentration(this.x, this.y, r), 0);
+        return this.productivity * sum_resources_here;
     }
 
     work() {
-        this.produce();
+        const production_potential = this.calculate_production_potential(); // in theory, this could change every update, if the map changes, or if I change the threshold for some reason, based on the market.
+        this.is_laborer = production_potential < PARAMS.production_labor_threshold;
+        // this.produce();
+        // console.log(production_potential, PARAMS.production_labor_threshold);
+        if (this.is_laborer && !this.critically_hungry()) this.labor();
+        else this.produce();
     }
+
+    critically_hungry() {
+        return this.total_energy() < PARAMS.maxHumanEnergy / 15;
+    }
+
 
     
     produce() {
         for (let r = 0; r < PARAMS.numResources; r++) {
             const resourceConcentration = this.forest.getConcentration(this.x, this.y, r);
-            this.supply[r] += generateNormalSample(this.productivity * Math.pow(resourceConcentration, 3), resourceConcentration*.1) * 1;
+            const produced = generateNormalSample(this.productivity * Math.pow(resourceConcentration, 3), resourceConcentration*.1) * 1;
+            // const produced = this.productivity * Math.pow(resourceConcentration, 5);
+            // const produced = this.productivity * 2* (Math.max(resourceConcentration, .5) - .5);
+            this.supply[r] += produced;
+            gameEngine.total_produced[r] += produced;
         }
         this.spendEnergy(PARAMS.workEnergyCost);
     }
+
+    labor() {
+        this.alternativeSupply[0] += PARAMS.laborPerCycle;
+        gameEngine.total_produced[PARAMS.numResources] += PARAMS.laborPerCycle;
+        this.spendEnergy(PARAMS.workEnergyCost);
+    }
+
+    buildTrades() {
+        let anyTradesBuilt = false;
+        const humansWithinReach = this.humansWithinReach();
+        for (let [r1, r2] of shuffleArray(gameEngine.automata.trademanager.all_resource_pairs)) {
+            const value_ratios = [];
+            for (let human of humansWithinReach) {
+                value_ratios.push(human.resource_valuations[r1] / human.resource_valuations[r2]);
+            }
+
+            const distribution = meanAndStd(value_ratios);
+            const trade_points_distance_from_mean = distribution.std * PARAMS.surplus_multiplier;
+            const newTradeSurplus_R2 = 2 * trade_points_distance_from_mean;
+            const expected_volume = newTradeSurplus_R2 * humansWithinReach.length * PARAMS.expected_volume_multiplier;
+            const cost_to_establish = this.socialReach * PARAMS.build_labor_per_reach; 
+            const r1_in = 1;
+            const r1_out = 1;
+            const r2_in = distribution.mean + trade_points_distance_from_mean;
+            const r2_out = distribution.mean - trade_points_distance_from_mean;
+
+            if (cost_to_establish <= this.alternativeSupply[0] &&
+                expected_volume > cost_to_establish
+                && r1_in / r2_out <= r2_in / r1_out
+            ) {
+                // console.log(`volume: ${expected_volume.toFixed(2)}, cost: ${cost_to_establish.toFixed(2)}, labor reserved ${this.alternativeSupply[0]}`)
+                anyTradesBuilt = true;
+
+                const newTrade = new Trade(r1, r2, r1_in, r2_out, r2_in, r1_out, this);
+                
+                // assert(r1_in / r2_out <= r2_in / r1_out + Number.EPSILON*10, `${(r1_in / r2_out).toFixed(2)}, ${(r1_in / r2_out).toFixed(2)}`);
+                // console.log(`new trade: IN ${r1}, OUT ${r2}, Ain: ${r1_in}, Bout: ${r1_out}, Bin: ${r2_in}, Aout: ${r1_out}`)
+                gameEngine.automata.trademanager.trades.push(newTrade);
+                gameEngine.automata.trademanager.total_trades_made += 1;
+                for (let human of humansWithinReach) {
+                    human.my_trades.push({trade: newTrade, side: 'A'});
+                    human.my_trades.push({trade: newTrade, side: 'B'});
+                }
+                this.alternativeSupply[0] -= cost_to_establish;
+                break; // only create one trade per turn?
+            }
+        }
+        return anyTradesBuilt;
+    }
+
+    humansWithinReach() {
+        // todo: make a premade list, and only update it when human is born or dies, instead of every cycle.
+        const humansWithinReach = [];
+        for (let human of gameEngine.automata.humans) {
+            if (distance(human, this) < this.socialReach) {
+                humansWithinReach.push(human);
+            }
+        }
+        return humansWithinReach;
+    }
+
+
 
     // keepOrder() {
         
@@ -133,11 +220,12 @@ class Human {
     metabolize() {
         for (let r = 0; r < PARAMS.numResources; r++) {
             const deficit = this.maxEnergyPerResource - this.metabolism[r];
-            const resource = Math.min(this.supply[r], .4);
-            this.supply[r] -= resource;
+            const consumed = Math.min(this.supply[r] / 2, .2);
+            this.supply[r] -= consumed;
 
-            // newEnergy += ingrediant * (deficit/PARAMS.numResources);
-            this.metabolism[r] += resource * deficit;
+            gameEngine.total_consumed[r] += consumed;
+
+            this.metabolism[r] += consumed * deficit;
         }
         // return newEnergy;
     }
@@ -153,24 +241,20 @@ class Human {
     }
 
 
-
-    trade() {
-        this.updateResourceValuations();
-
-        for (let r = 0; r < PARAMS.numResources + PARAMS.numAlternativeResources; r++) {
-            for (let trade_info of this.my_trades[r]) {
-                if (this.favorsTrade(trade_info, r) && this.canAffordTrade(trade_info, r)) {
-                    // todo: change to a loop, for as long as can afford trade in this cycle
-                    this.executeTrade(trade);
-                }
-            }
-        }
-    }
-
     updateResourceValuations() {
         for (let r = 0; r < PARAMS.numResources; r++) {
-            this.resource_valuations[r] = this.maxEnergyPerResource - this.metabolism[r] * this.personal_valuation_factor;
+            // this.resource_valuations[r] = (this.maxEnergyPerResource - this.metabolism[r]) * this.personal_valuation_factor;
+            // this.resource_valuations[r] = 10 / this.supply[r];
+            this.resource_valuations[r] = Math.pow((this.maxEnergyPerResource - this.metabolism[r]) / (this.supply[r] + 1), 1/2);
             
+        }
+
+        // clear unused trades        
+        for (let i = this.my_trades.length - 1; i >= 0; i--) {
+            const trade = this.my_trades[i].trade;
+            if (trade.deprecated) {
+                this.my_trades.splice(i, 1);
+            }
         }
 
 
@@ -183,26 +267,56 @@ class Human {
         // }
     }
 
+    makeFavorableTrades() {
+        // this.updateResourceValuations();
 
-    favorsTrade(trade_info, r) {
+        // for (let r = 0; r < PARAMS.numResources + PARAMS.numAlternativeResources; r++) {
+            // for (let trade_info of this.my_trades[r]) {
+        let sumTradesAttempted = 0;
+        let sumTradesAccepted = 0;
+        for (let trade_info of shuffleArray(this.my_trades)) {
+            const trade = trade_info.trade;
+            const side = trade_info.side;
+            const rIn = trade.resourcesIn[side];
+            const rOut = trade.resourceInOppositeSide(side);
+            if (this.favorsTrade(trade, side, rIn, rOut) && this.canAffordTrade(trade, side, rIn)) {
+
+                // todo: change to a loop, for as long as can afford trade in this cycle
+
+                // todo: change trade quantity based on current supply and/or valuations.
+                sumTradesAttempted += 1;
+                let traded = trade.invoke(this, side, 1);
+                sumTradesAccepted += traded;
+
+            }
+        }
+        return {sumTradesAttempted, sumTradesAccepted};
+    }
+
+
+
+    favorsTrade(trade, side, rIn, rOut) {
         // "in" refers to "in"put of trade, i.e. what this human is giving away
-        const inResourceQuantity = trade_info.trade.inResourceQuantity[trade_info.side];
-        const outResourceQuantity = trade_info.trade.outResourceQuantity[trade_info.side];
-        return (this.resource_valuations[r] * inResourceQuantity < this.resource_valuations[r] * outResourceQuantity);
+        const XinXout = trade.XinXout[side];
+
+        // const inResourceQuantity = trade_info.trade.inResourceQuantity[trade_info.side];
+        // const outResourceQuantity = trade_info.trade.outResourceQuantity[trade_info.side];
+        return (this.resource_valuations[rOut] / this.resource_valuations[rIn] >= XinXout);
     }
     
-    canAffordTrade(trade_info, r) {
-        const inResourceQuantity = trade_info.trade.inResourceQuantity[trade_info.side];
-        if (r < PARAMS.numResources) {
-            return this.supply[r] >= inResourceQuantity;
+    canAffordTrade(trade, side, rIn) {
+        // const inResourceQuantity = trade_info.trade.inResourceQuantity[trade_info.side];
+        const inResourceQuantity = 1;
+        if (rIn < PARAMS.numResources) {
+            return this.supply[rIn] >= inResourceQuantity;
         } else {
-            return this.alternativeSupply[r - PARAMS.numResources] >= inResourceQuantity;
+            return this.alternativeSupply[rIn - PARAMS.numResources] >= inResourceQuantity;
         }
     }
 
-    executeTrade(trade_info, r) {
-
-    }
+    // executeTrade(trade, side, quantity) {
+    //     trade.invoke(this, side, quantity);
+    // }
 
     
     

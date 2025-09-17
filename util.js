@@ -9,6 +9,13 @@ function average(arr) {
   return arr.reduce((sum, val) => sum + val, 0) / arr.length;
 }
 
+function meanAndStd(arr) {
+  const n = arr.length;
+  const mean = arr.reduce((a, b) => a + b, 0) / n;
+  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+  const std = Math.sqrt(variance);
+  return { mean, std };
+}
 
 //GameBoard code below
 function randomInt(n) {
@@ -17,6 +24,10 @@ function randomInt(n) {
 
 function randomFloat(min, max) {
     return Math.random() * (max - min) + min;
+}
+
+function distance(a, b) {
+    return Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
 }
 
 function generateNormalSample(mean = 0, stdDev = 1) {
@@ -37,13 +48,23 @@ function logBase(base, x) {
     return Math.log(x) / Math.log(base);
 }
 
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+// function shuffleArray(array) {
+//     for (let i = array.length - 1; i > 0; i--) {
+//       const j = Math.floor(Math.random() * (i + 1));
+//       [array[i], array[j]] = [array[j], array[i]];
+//     }
+//     return array;
+// };
+function shuffleArray(arr) {
+    // copy the original array so we don't mutate it
+    const copy = arr.slice();  
+    
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    return array;
-};
+    return copy;
+}
 
 function numArray(n) {
     let arr = [];

@@ -19,10 +19,13 @@
     <script type="text/javascript" src="./gene.js"></script>
     <script type="text/javascript" src="./automata.js"></script>
     <script type="text/javascript" src="./human.js"></script>
+    <script type="text/javascript" src="./trade.js"></script>
+    <script type="text/javascript" src="./trademanager.js"></script>
     <script type="text/javascript" src="./forest.js"></script>
     <script type="text/javascript" src="./datamanager.js"></script>
     <script type="text/javascript" src="./selectionmanager.js"></script>
     <script type="text/javascript" src="./selectionview.js"></script>
+    <script type="text/javascript" src="./tradeview.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/graphology@0.24.0/dist/graphology.umd.min.js"></script> -->
     <script type="text/javascript" src="./main.js"></script>
@@ -80,22 +83,22 @@
                 
                 // Set canvas size from PARAMS
                 const canvas = document.getElementById("gameWorld");
-                canvas.width = PARAMS.width;
+                canvas.width = PARAMS.canvaswidth;
             }
 
             
             const canvas = document.getElementById("gameWorld");
 
-            // canvas.addEventListener("click", function (event) {
-            //     const rect = canvas.getBoundingClientRect();
-            //     const x = event.clientX - rect.left;
-            //     const y = event.clientY - rect.top;
 
-            //     if (x < PARAMS.width && y < PARAMS.height) {
-            //         gameEngine.automata.add_human_at(x, y);
-            //     }
+            canvas.addEventListener("click", (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
 
-            // });
+                gameEngine.clickCapableGraphs.forEach(graph => {
+                    graph.handleClick(mouseX, mouseY);
+                });
+            });
 
             let isSpawning = false;
             let isSelecting = false;
@@ -105,7 +108,7 @@
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 
-                if (x < PARAMS.width && y < PARAMS.height) {
+                if (x < canvas.width) {
                     if (e.shiftKey) {
                         isSelecting = true;
                         gameEngine.selection.beginSelection(x, y);
@@ -121,7 +124,7 @@
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                if (x < PARAMS.width && y < PARAMS.height) {
+                if (x < canvas.width) {
                     if (isSelecting) gameEngine.selection.updateSelection(x, y);
                     if (isSpawning) gameEngine.selection.updateSpawn(x, y);
                 }

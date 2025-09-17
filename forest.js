@@ -6,12 +6,19 @@ class Forest {
 
         this.seeds = Array.from({length: PARAMS.numResources}, () => Math.random() * 40);
 
+        this.x = PARAMS.margin;
+        this.y = PARAMS.margin;
         // Number of cells horizontally/vertically
-        this.cols = Math.ceil(PARAMS.width / PARAMS.cellSize);
-        this.rows = Math.ceil(PARAMS.height / PARAMS.cellSize);
+        this.cols = Math.ceil(PARAMS.forestwidth / PARAMS.cellSize);
+        this.rows = Math.ceil(PARAMS.forestheight / PARAMS.cellSize);
         this.grid = [];
+        this.selectedTrade = null;
 
         this.setConcentration();
+        // this.setConcentrationRandomResource();
+        // this.setConcentrationStripes();
+
+        console.log(this)
 
     }
 
@@ -25,6 +32,57 @@ class Forest {
         this.renderCells(ctx);
         // this.renderPixels(ctx);
 
+        if (this.selectedTrade) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 2;
+
+            for (let [key, value] of this.selectedTrade.trade_partners.entries()) {
+                // key is something like "3-7"
+                const [idA, idB] = key.split("-").map(Number);
+                const h1 = gameEngine.automata.humanById.get(idA);
+                const h2 = gameEngine.automata.humanById.get(idB);
+
+                ctx.beginPath();
+                ctx.moveTo(this.x + h1.x, this.y + h1.y);
+                ctx.lineTo(this.x + h2.x, this.y + h2.y);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+    }
+
+    selectTrade(trade) {
+        this.selectedTrade = trade;
+
+    }
+
+    setConcentrationRandomResource() {
+        // Each cell has concentrations for each resource
+        for (let i = 0; i < this.rows; i++) {
+            this.grid[i] = [];
+            for (let j = 0; j < this.cols; j++) {
+                const cell = new Array(3).fill(0);
+                cell[randomInt(PARAMS.numResources)] = 1;
+                this.grid[i][j] = cell;
+            }
+        }
+
+    }
+
+    
+    setConcentrationStripes() {
+        // Each cell has concentrations for each resource
+        for (let i = 0; i < this.rows; i++) {
+            this.grid[i] = [];
+            for (let j = 0; j < this.cols; j++) {
+                const cell = new Array(3).fill(0);
+                cell[Math.floor(j/2) % 3] = 1;
+                this.grid[i][j] = cell;
+            }
+        }
 
     }
 
@@ -95,7 +153,7 @@ class Forest {
                 const y = i * PARAMS.cellSize;
                 const cell = this.grid[i][j];
                 ctx.fillStyle = `rgb(${Math.floor(cell[0] * 255)}, ${Math.floor(cell[1] * 255)}, ${Math.floor(cell[2] * 255)})`;
-                ctx.fillRect(x, y, PARAMS.cellSize, PARAMS.cellSize);
+                ctx.fillRect(this.x + x, this.y + y, PARAMS.cellSize, PARAMS.cellSize);
             }
         }
     }

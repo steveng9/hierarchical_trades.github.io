@@ -6,6 +6,7 @@ class SelectionManager {
         this.isSpawning = false;
         this.isSelecting = false;
         this.tempHuman = null;
+        this.forest = gameEngine.automata.forest;
     }
 
     beginSelection(x, y) {
@@ -19,7 +20,7 @@ class SelectionManager {
         this.end = { x, y };
         this.isSpawning = true;
         this.isSelecting = false;
-        this.tempHuman = new Human({x: x, y: y, reach: 0, isSpawning: true});
+        this.tempHuman = new Human({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
         gameEngine.automata.add_human(this.tempHuman);
     }
 
@@ -42,10 +43,10 @@ class SelectionManager {
         if (!this.isSpawning && !this.isSelecting) return;
 
         // Rectangle boundaries
-        const x1 = Math.min(this.start.x, this.end.x);
-        const y1 = Math.min(this.start.y, this.end.y);
-        const x2 = Math.max(this.start.x, this.end.x);
-        const y2 = Math.max(this.start.y, this.end.y);
+        const x1 = Math.min(this.start.x, this.end.x) - this.forest.x;
+        const y1 = Math.min(this.start.y, this.end.y) - this.forest.y;
+        const x2 = Math.max(this.start.x, this.end.x) - this.forest.x;
+        const y2 = Math.max(this.start.y, this.end.y) - this.forest.y;
 
         gameEngine.automata.datamanager.analyze_humans_in(x1, x2, y1, y2);
 
@@ -84,7 +85,7 @@ class SelectionManager {
             ctx.strokeStyle = "yellow";
             for (let h of gameEngine.automata.datamanager.humans_analyzed) {
                 ctx.beginPath();
-                ctx.arc(h.x, h.y, 8, 0, 2 * Math.PI);
+                ctx.arc(h.x + this.forest.x, h.y + this.forest.y, 8, 0, 2 * Math.PI);
                 ctx.stroke();
             }
         }
