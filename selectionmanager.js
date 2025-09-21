@@ -10,18 +10,22 @@ class SelectionManager {
     }
 
     beginSelection(x, y) {
-        this.isSelecting = true;
-        this.start = { x, y };
-        this.end = { x, y };
+        if (x > PARAMS.margin && x < PARAMS.margin+ PARAMS.forestwidth && y > PARAMS.margin && y < PARAMS.margin+PARAMS.forestheight) {
+            this.isSelecting = true;
+            this.start = { x, y };
+            this.end = { x, y };
+        }
     }
 
     beginSpawn(x, y) {
-        this.start = { x, y };
-        this.end = { x, y };
-        this.isSpawning = true;
-        this.isSelecting = false;
-        this.tempHuman = new Human({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
-        gameEngine.automata.add_human(this.tempHuman);
+        if (x > PARAMS.margin && x < PARAMS.margin+ PARAMS.forestwidth && y > PARAMS.margin && y < PARAMS.margin+PARAMS.forestheight) {
+            this.start = { x, y };
+            this.end = { x, y };
+            this.isSpawning = true;
+            this.isSelecting = false;
+            this.tempHuman = new Human({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
+            gameEngine.automata.add_human(this.tempHuman);
+        }
     }
 
     updateSelection(x, y) {

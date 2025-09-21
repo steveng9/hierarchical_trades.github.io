@@ -16,8 +16,9 @@ class SelectionDataView {
             reach: this.x + 60,
             supply: this.x + 110,
             energy: this.x + 220,
-            tradeVol: this.x + 340,
-            royalties: this.x + 430,
+            tradeVol: this.x + 280,
+            royalties: this.x + 410,
+            numTradesBuilt: this.x + 480,
             valuations: this.x + 500
         };
     }
@@ -53,6 +54,7 @@ class SelectionDataView {
         ctx.fillText("Energy", this.colX.energy, headerY);
         ctx.fillText("Trade Vol.", this.colX.tradeVol, headerY);
         ctx.fillText("Roy.", this.colX.royalties, headerY);
+        ctx.fillText("TB", this.colX.numTradesBuilt, headerY);
         ctx.fillText("Value", this.colX.valuations, headerY);
 
         // Separator
@@ -80,11 +82,12 @@ class SelectionDataView {
             ctx.fillText(`[${human.supply.map(v => v.toFixed(1)).join(",")}]`, this.colX.supply, rowY);
             ctx.fillText(`[${human.volumeTradedFor.map(v => v.toFixed(1)).join(",")}]`, this.colX.tradeVol, rowY);
             ctx.fillText(`[${human.totalRoyalties.map(v => v.toFixed(0)).join(",")}]`, this.colX.royalties, rowY);
+            ctx.fillText(`${human.num_trades_built}`, this.colX.numTradesBuilt, rowY);
 
             // Energy stacked bar
             const barX = this.colX.energy;
             const barY = rowY + 2;
-            const barWidth = 100;
+            const barWidth = 50;
             const barHeight = 10;
             const fractions = human.metabolism.map(v => v / PARAMS.maxHumanEnergy);
             const colors = ["red", "limegreen", "blue"];

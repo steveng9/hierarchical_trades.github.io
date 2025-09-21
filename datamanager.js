@@ -14,9 +14,10 @@ class DataManager {
         let graphY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
 
         
-        gameEngine.addGraph(new HumanDataView(graphX, graphY));
+        const hdv = new HumanDataView(graphX, graphY);
+        gameEngine.addGraph(hdv);
         
-        gameEngine.addGraph(new VariableViewer(graphX, graphY + 500, "Variables", () => ({
+        gameEngine.addGraph(new VariableViewer(graphX, graphY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
             "generation": this.automata.generation,
             "simulation speed (gen / sec)": gameEngine.updatesPerSecond.toFixed(2),
             // "sum trades": gameEngine.automata.trademanager.totalTrades,
@@ -29,8 +30,9 @@ class DataManager {
         })));
 
 
-        gameEngine.clickCapableGraphs.push(new TradeDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY ))
-        gameEngine.addGraph(new SelectionDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY + PARAMS.margin + 300, this));
+        const tdv = new TradeDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY )
+        gameEngine.clickCapableGraphs.push(tdv);
+        gameEngine.addGraph(new SelectionDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY + PARAMS.margin + tdv.panelHeight , this));
         // gameEngine.addGraph(new Graph(graphX, graphY + 650, [this.simSpeeds], "simulation speed (gen / sec)"));
 
         // gameEngine.addGraph(new VariableHistogramViewer(graphX, 785 + graphY, "Average Q Values"));

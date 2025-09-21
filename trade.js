@@ -40,16 +40,19 @@ class Trade {
         const resourceIn = this.resourcesIn[side];
         const desiredOut = quantity / this.XinXout[side];
         const availableOut = this.escrow[resourceOut] / this.YinXout[side];
-        const amountFulfilled = Math.min(availableOut, desiredOut);
-        assert(amountFulfilled >= 0 - Number.EPSILON*10, `this should be true if there is any resourceOut in escrow: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
-        const amountIn = amountFulfilled * this.XinXout[side];
+        const fulfilledOut = Math.min(availableOut, desiredOut);
+        assert(fulfilledOut >= 0 - Number.EPSILON*10, `this should be true if there is any resourceOut in escrow: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
+        const amountIn = fulfilledOut * this.XinXout[side];
         if (this.escrow[resourceOut] > 0) {
+            // if (amountIn > human.supply[resourceIn]) {
+            //     console.log("here")
+            // }
             assert(amountIn <= human.supply[resourceIn], `human ${human.id} does not have enough supply to FULFILL trade!... has ${human.supply[resourceIn]}, offered ${amountIn}`);
             
             // side X
             human.supply[resourceIn] -= amountIn;
-            human.supply[resourceOut] += amountFulfilled;
-            human.volumeTradedFor[resourceOut] += amountFulfilled;
+            human.supply[resourceOut] += fulfilledOut;
+            human.volumeTradedFor[resourceOut] += fulfilledOut;
             
             
             
@@ -65,9 +68,9 @@ class Trade {
             // surplus
             const surplus_in = amountIn * this.surpluses[side];
             const tolerance = Number.EPSILON*20;
-            assert(Math.abs((amountInOpposite - amountFulfilled) - (amountInOpposite * this.surpluses[opposite_side(side)])) < tolerance, `should be equal: ${amountInOpposite - amountFulfilled}, ${amountInOpposite * this.surpluses[opposite_side(side)]}`)
+            assert(Math.abs((amountInOpposite - fulfilledOut) - (amountInOpposite * this.surpluses[opposite_side(side)])) < tolerance, `should be equal: ${amountInOpposite - fulfilledOut}, ${amountInOpposite * this.surpluses[opposite_side(side)]}`)
             // this.supply[resourceOut] += amountInOpposite * this.surpluses[opposite_side(side)];
-            const surplus_out = amountInOpposite - amountFulfilled; // surplus from the other side
+            const surplus_out = amountInOpposite - fulfilledOut; // surplus from the other side
             
             this.labor -= amountIn * PARAMS.laborPerResourceUnit;
             
@@ -92,7 +95,7 @@ class Trade {
             this.addToEscrow(human, side, quantity - amountIn);
         }
         
-        return amountFulfilled;
+        return fulfilledOut;
     }
 
     fulfillRequest(amountNeededTotal, side) {

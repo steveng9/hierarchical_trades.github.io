@@ -1,4 +1,5 @@
 class HumanDataView {
+    
     constructor(x, y) {
         this.x = x;          // top-left corner of the panel
         this.y = y;

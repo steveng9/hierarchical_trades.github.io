@@ -34,7 +34,8 @@ class TradeManager {
         }
 
         for (let human of shuffledHumans) {
-            const result = human.makeFavorableTrades();
+            // const result = human.makeOnlyFavorableTrades();
+            const result = human.makeRandomTrades();
             // this.totalTrades += result.sumTradesAttempted;
             // this.totalTradesSucceeded += result.sumTradesAccepted;
         }

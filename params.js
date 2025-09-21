@@ -19,8 +19,9 @@ var PARAMS = {
     cellSize: 50,
     forestwidth: 1100,
     forestheight: 600,
-    numResources: 2,
+    numResources: 3,
     roughness: 0.5,
+    undulation_cutuff: .3,
 
 
 
@@ -41,10 +42,10 @@ var PARAMS = {
     laborPerResourceUnit: 0.2,
     fixTradeSurplusRatio: true, // if true, all trades will have the same Ain/Bin ratio
     surplus_multiplier: .1,
-    build_labor_per_reach: 1/20,
-    expected_volume_multiplier: 1/2,
-    clear_trades_every: 200,
-    royalty: .5,
+    build_labor_per_reach: 1/3,
+    expected_volume_multiplier: 2,
+    clear_trades_every: 100,
+    royalty: 1,
 
 
     // database

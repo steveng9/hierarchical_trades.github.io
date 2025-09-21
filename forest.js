@@ -93,7 +93,7 @@ class Forest {
             for (let j = 0; j < this.cols; j++) {
                 let cell = new Array(3).fill(0);
                 for (let r = 0; r < PARAMS.numResources; r++) {
-                    cell[r] = this.setCellConcentration(j, i, r);
+                    cell[r] = ((Math.max(this.setCellConcentration(j, i, r) - PARAMS.undulation_cutuff, 0))/(1-PARAMS.undulation_cutuff));
                     // break;
                 }
                 this.grid[i][j] = cell;

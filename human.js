@@ -28,6 +28,8 @@ class Human {
         this.productivity = randomFloat(0, 1.2);
         // this.productivity = .7;
         // this.production_potential = this.calculate_production_potential();
+        this.num_trades_built = 0;
+        this.trades_built = Array.from({ length: PARAMS.numResources }, () => Array(PARAMS.numResources).fill(null));
 
         
         // this.energy = energy;
@@ -157,7 +159,7 @@ class Human {
             const trade_points_distance_from_mean = distribution.std * PARAMS.surplus_multiplier;
             const newTradeSurplus_R2 = 2 * trade_points_distance_from_mean;
             const expected_volume = newTradeSurplus_R2 * humansWithinReach.length * PARAMS.expected_volume_multiplier;
-            const cost_to_establish = this.socialReach * PARAMS.build_labor_per_reach; 
+            const cost_to_establish = Math.pow(this.socialReach, 1/2) * PARAMS.build_labor_per_reach; 
             const r1_in = 1;
             const r1_out = 1;
             const r2_in = distribution.mean + trade_points_distance_from_mean;
@@ -169,8 +171,15 @@ class Human {
             ) {
                 // console.log(`volume: ${expected_volume.toFixed(2)}, cost: ${cost_to_establish.toFixed(2)}, labor reserved ${this.alternativeSupply[0]}`)
                 anyTradesBuilt = true;
-
+                
                 const newTrade = new Trade(r1, r2, r1_in, r2_out, r2_in, r1_out, this);
+                this.num_trades_built += 1;
+
+                // only do this if replace new trades.
+                if (this.trades_built[r1][r2]) {
+                    this.trades_built[r1][r2].deprecated = true;
+                }
+                this.trades_built[r1][r2] = newTrade;
                 
                 // assert(r1_in / r2_out <= r2_in / r1_out + Number.EPSILON*10, `${(r1_in / r2_out).toFixed(2)}, ${(r1_in / r2_out).toFixed(2)}`);
                 // console.log(`new trade: IN ${r1}, OUT ${r2}, Ain: ${r1_in}, Bout: ${r1_out}, Bin: ${r2_in}, Aout: ${r1_out}`)
@@ -267,29 +276,86 @@ class Human {
         // }
     }
 
-    makeFavorableTrades() {
+    
+    makeRandomTrades() {
         // this.updateResourceValuations();
 
         // for (let r = 0; r < PARAMS.numResources + PARAMS.numAlternativeResources; r++) {
             // for (let trade_info of this.my_trades[r]) {
         let sumTradesAttempted = 0;
         let sumTradesAccepted = 0;
+
         for (let trade_info of shuffleArray(this.my_trades)) {
             const trade = trade_info.trade;
             const side = trade_info.side;
             const rIn = trade.resourcesIn[side];
             const rOut = trade.resourceInOppositeSide(side);
-            if (this.favorsTrade(trade, side, rIn, rOut) && this.canAffordTrade(trade, side, rIn)) {
 
+            // const amountInAttempted = trade_info.trade.inResourceQuantity[trade_info.side];
+            const amountInAttempted = 1;
+            if (this.favorsTrade(trade, side, rIn, rOut) && this.canAffordTrade(rIn, amountInAttempted)) {
+    
                 // todo: change to a loop, for as long as can afford trade in this cycle
-
+    
                 // todo: change trade quantity based on current supply and/or valuations.
                 sumTradesAttempted += 1;
-                let traded = trade.invoke(this, side, 1);
+                // console.log(this.id, rIn, this.supply);
+                // console.log(rIn, trade.resourcesIn);
+                let traded = trade.invoke(this, side, amountInAttempted);
                 sumTradesAccepted += traded;
+    
+            }
 
+        }
+
+        return {sumTradesAttempted, sumTradesAccepted};
+    }
+
+    makeOnlyFavorableTrades() {
+        // this.updateResourceValuations();
+
+        // for (let r = 0; r < PARAMS.numResources + PARAMS.numAlternativeResources; r++) {
+            // for (let trade_info of this.my_trades[r]) {
+        let sumTradesAttempted = 0;
+        let sumTradesAccepted = 0;
+
+        const best_trades = Array.from({ length: PARAMS.numResources }, () => Array(PARAMS.numResources).fill(null));
+        const best_trade_values = Array.from({ length: PARAMS.numResources }, () => Array(PARAMS.numResources).fill(Number.MAX_VALUE));
+        for (let trade_info of shuffleArray(this.my_trades)) {
+            const trade = trade_info.trade;
+            const side = trade_info.side;
+            const rIn = trade.resourcesIn[side];
+            const rOut = trade.resourceInOppositeSide(side);
+
+            if (trade.XinXout[side] < best_trade_values[rIn][rOut]) {
+                best_trades[rIn][rOut] = trade_info;
+                best_trade_values[rIn][rOut] = trade.XinXout[side]; 
+            }
+
+        }
+        
+        for (let rIn = 0; rIn < PARAMS.numResources; rIn++) {
+            for (let rOut = 0; rOut < PARAMS.numResources; rOut++) {
+                if (rIn == rOut || !best_trades[rIn][rOut]) continue;
+                const trade = best_trades[rIn][rOut].trade;
+                const side = best_trades[rIn][rOut].side;
+                // const amountInAttempted = trade_info.trade.inResourceQuantity[trade_info.side];
+                const amountInAttempted = 1;
+                if (this.favorsTrade(trade, side, rIn, rOut) && this.canAffordTrade(rIn, amountInAttempted)) {
+        
+                    // todo: change to a loop, for as long as can afford trade in this cycle
+        
+                    // todo: change trade quantity based on current supply and/or valuations.
+                    sumTradesAttempted += 1;
+                    // console.log(this.id, rIn, this.supply);
+                    // console.log(rIn, trade.resourcesIn);
+                    let traded = trade.invoke(this, side, amountInAttempted);
+                    sumTradesAccepted += traded;
+        
+                }
             }
         }
+
         return {sumTradesAttempted, sumTradesAccepted};
     }
 
@@ -304,13 +370,11 @@ class Human {
         return (this.resource_valuations[rOut] / this.resource_valuations[rIn] >= XinXout);
     }
     
-    canAffordTrade(trade, side, rIn) {
-        // const inResourceQuantity = trade_info.trade.inResourceQuantity[trade_info.side];
-        const inResourceQuantity = 1;
+    canAffordTrade(rIn, amountInAttempted) {
         if (rIn < PARAMS.numResources) {
-            return this.supply[rIn] >= inResourceQuantity;
+            return this.supply[rIn] >= amountInAttempted;
         } else {
-            return this.alternativeSupply[rIn - PARAMS.numResources] >= inResourceQuantity;
+            return this.alternativeSupply[rIn - PARAMS.numResources] >= amountInAttempted;
         }
     }
 

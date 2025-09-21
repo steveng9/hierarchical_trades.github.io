@@ -37,15 +37,18 @@ class TradeDataView {
 
     draw(ctx) {
         
-        this.num_draws_since_sort += 1;
-        if (this.num_draws_since_sort >= this.trade_sort_frequency) {
-            this.num_draws_since_sort = 0;
-            // Sort trades by invocation count (descending)
-            this.sortedTrades = [...gameEngine.automata.trademanager.trades].sort(
-                (a, b) => b.invocations.A - a.invocations.A
-            );
-        }
-
+        // this.num_draws_since_sort += 1;
+        // if (this.num_draws_since_sort >= this.trade_sort_frequency) {
+        //     this.num_draws_since_sort = 0;
+        //     // Sort trades by invocation count (descending)
+        //     this.sortedTrades = [...gameEngine.automata.trademanager.trades].sort(
+        //         (a, b) => b.invocations.A - a.invocations.A
+        //     );
+        // }
+        this.sortedTrades = [...gameEngine.automata.trademanager.trades].sort(
+            (a, b) => b.invocations.A - a.invocations.A
+        );
+        
         ctx.save();
 
         // Panel outline
