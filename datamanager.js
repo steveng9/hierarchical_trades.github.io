@@ -22,11 +22,12 @@ class DataManager {
             "simulation speed (gen / sec)": gameEngine.updatesPerSecond.toFixed(2),
             // "sum trades": gameEngine.automata.trademanager.totalTrades,
             // "sum trades succeeded": gameEngine.automata.trademanager.totalTradesSucceeded.toFixed(2),
+            "num humans": this.automata.humans.length,
+            "num laborers": this.laborers,
+            "total trades": gameEngine.automata.trademanager.trades.length,
+            "total trades built": gameEngine.automata.trademanager.total_trades_made,
             "total R": gameEngine.total_existing_actual[0].toFixed(2),
             "Expected R": gameEngine.total_existing_expected[0].toFixed(2),
-            "num laborers": this.laborers,
-            "total trades built": gameEngine.automata.trademanager.total_trades_made,
-            "total trades": gameEngine.automata.trademanager.trades.length,
         })));
 
 

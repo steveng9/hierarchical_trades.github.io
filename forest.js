@@ -43,10 +43,12 @@ class Forest {
                 const h1 = gameEngine.automata.humanById.get(idA);
                 const h2 = gameEngine.automata.humanById.get(idB);
 
-                ctx.beginPath();
-                ctx.moveTo(this.x + h1.x, this.y + h1.y);
-                ctx.lineTo(this.x + h2.x, this.y + h2.y);
-                ctx.stroke();
+                if (h1 && h2) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + h1.x, this.y + h1.y);
+                    ctx.lineTo(this.x + h2.x, this.y + h2.y);
+                    ctx.stroke();
+                }
             }
 
             ctx.restore();

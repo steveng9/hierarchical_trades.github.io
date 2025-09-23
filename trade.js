@@ -15,7 +15,7 @@ class Trade {
         this.volumeMoved = {A: 0, B: 0};
 
         this.XinXout = {A: Ain / Aout, B: Bin / Bout};
-        this.YoutXin = {A: Bout / Ain, B: Aout / Bin};
+        // this.YoutXin = {A: Bout / Ain, B: Aout / Bin};
         this.YinXout = {A: Bin / Aout, B: Ain / Bout}; 
         this.XinYin = {A: Ain / Bin, B: Bin / Ain};
 

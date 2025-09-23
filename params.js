@@ -20,7 +20,7 @@ var PARAMS = {
     forestwidth: 1100,
     forestheight: 600,
     numResources: 3,
-    roughness: 0.5,
+    roughness: 1,
     undulation_cutuff: .3,
 
 
@@ -33,7 +33,7 @@ var PARAMS = {
     basicEnergyDepletion: 0.01,
     workEnergyCost: 1,
     numAlternativeResources: 1, // i.e. labor, culture, currency, "order-keeping", etc.
-    production_labor_threshold: .4, // choose labor over production if production potential is less than this.
+    production_labor_threshold: .5, // choose labor over production if production potential is less than this.
     laborPerCycle: 1,
 
 
@@ -41,7 +41,7 @@ var PARAMS = {
     // trading
     laborPerResourceUnit: 0.2,
     fixTradeSurplusRatio: true, // if true, all trades will have the same Ain/Bin ratio
-    surplus_multiplier: .1,
+    surplus_multiplier: .2,
     build_labor_per_reach: 1/3,
     expected_volume_multiplier: 2,
     clear_trades_every: 100,

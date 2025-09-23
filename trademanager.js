@@ -76,7 +76,7 @@ function allResourcePairs() {
     
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
-            if (j != i) pairs.push([i, j]);
+            if (j !== i) pairs.push([i, j]);
         }
     }
     return pairs;

@@ -6,7 +6,7 @@ class VariableViewer {
         this.variableGetter = variableGetter;
 
         this.xSize = PARAMS.leftpanelWidth;
-        this.ySize = 120;
+        this.ySize = 140;
         this.ctx = gameEngine.ctx;
         this.colors = ["#00BB00", "#BB0000", "#00BBBB", "#CCCCCC"];
         this.maxVal = 0;
