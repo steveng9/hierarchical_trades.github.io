@@ -1,0 +1,255 @@
+ Here is Claude's plan:                                                                                                         
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Hierarchical (Inductive) Trades Implementation Plan                                                                            
+                                                                                                                              
+ Context                                                                                                                      
+
+ The simulation currently supports level-1 trades: agent-to-agent resource exchanges where the trade inventor receives surplus
+ as royalties. The goal is to enable hierarchical trades — where agents can build trades on top of existing trades, creating
+ emergent institutional hierarchies (companies, management layers, fiefdoms). A level-2 trade lets agents exchange a resource
+ for access to a level-1 trade's accumulated surplus. Level-3 trades tap level-2 surplus, and so on. The mechanism is
+ uniform/inductive — no special-casing per level.
+
+ Core Insight
+
+ A Trade already has supply[] (accumulated surplus). A higher-level trade treats a lower-level trade as a participant on one
+ side: the parent trade automatically supplies resources from its supply[], and receives payment back. From an agent's
+ perspective, invoking a level-2 trade is identical to level-1 — put in resource S, get resource R — the difference is R comes
+ from the parent trade's supply, not from another agent's escrow.
+
+ ---
+ Files to Modify
+
+ ┌─────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
+ │      File       │                                           Changes                                           │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ params.js       │ Add hierarchical trade parameters                                                           │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ trade.js        │ Add parent/level/managers fields, modify invoke() for hierarchical path, add reach caching  │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ human.js        │ Rewrite buildMultiLevelTrades(), adjust trade distribution for single-sided level-2+ trades │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ trademanager.js │ Call buildMultiLevelTrades(), handle hierarchical trade cleanup, manager cleanup on death   │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ tradeview.js    │ Show trade level in the data view                                                           │
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ automata.js     │ Clean up dead managers from trades when humans die                                          │
+ └─────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ ---
+ Step 1: Add Parameters (params.js)
+
+ Add to the trading section:
+ inventorPerpetualRoyalty: 0,        // fraction of surplus inventor keeps forever (0 = all goes to trade.supply)
+ minTradeSupplyForHierarchy: 5,      // minimum accumulated supply in a trade before a level-2+ trade can target it
+ hierarchicalTradeCostMultiplier: 2, // building a hierarchical trade costs more labor than level-1
+
+ ---
+ Step 2: Extend Trade Class (trade.js)
+
+ 2a. New constructor fields
+
+ constructor(resourceA, resourceB, Ain, Aout, Bin, Bout, inventor, parentTrade = null, parentSide = null)
+
+ New fields:
+ - this.parentTrade — the lower-level trade backing one side (null for level-1)
+ - this.parentSide — which side of THIS trade is auto-supplied by parent ('A' or 'B')
+ - this.level — parentTrade ? parentTrade.level + 1 : 1
+ - this.managers — new Set() of humans who have invoked this trade as managers
+ - this.childTrades — [] array of trades built on top of this one (for cascading deprecation)
+ - this.cachedEffectiveReach — cached reach radius, recomputed only when managers change
+ - this.effectiveReachCenter — {x, y} centroid of inventor + managers, for spatial queries
+
+ 2b. Modify surplus distribution in invoke()
+
+ Currently (lines 82-92): inventor gets PARAMS.royalty of surplus. Change to:
+
+ For level-1 trades (and all trades regardless of level):
+ - inventorPerpetualRoyalty portion → inventor's supply (0 for now, so nothing)
+ - Remaining surplus → trade.supply[]
+
+ This means all surplus accumulates in trade.supply[] by default, which is what enables higher-level trades to tap into it.
+
+ 2c. Add hierarchical invocation path in invoke()
+
+ When an agent invokes on the agent-facing side of a hierarchical trade (i.e., side !== this.parentSide):
+
+ 1. Check parentTrade.supply[resourceOut] instead of escrow[resourceOut] for available output
+ 2. Agent gives amountIn of resourceIn → goes to parentTrade.supply[resourceIn] (parent receives payment)
+ 3. Parent gives amountInParent of resourceOut → parentTrade.supply[resourceOut] decreases
+ 4. Surplus from both sides goes to this.supply[] (minus inventor perpetual royalty)
+ 5. Add human to this.parentTrade.managers set (they are now managing the parent trade)
+ 6. Recalculate parentTrade.cachedEffectiveReach if new manager added
+ 7. Do NOT use escrow — no escrow/request system needed for parent-backed side
+
+ If someone tries to invoke the parent-backed side, reject (or simply never distribute that side to agents — see Step 4).
+
+ 2d. Effective reach methods
+
+ updateEffectiveReach() {
+     let maxReach = this.inventor?.removeFromWorld ? 0 : this.inventor.socialReach;
+     // union of all managers' reaches
+     for (let manager of this.managers) {
+         if (manager.removeFromWorld) continue;
+         maxReach = Math.max(maxReach, manager.socialReach);
+     }
+     this.cachedEffectiveReach = maxReach;
+     // centroid of inventor + managers for spatial center
+     // (or just use inventor's position for simplicity)
+ }
+
+ isWithinReach(human) {
+     // Check if human is within reach of inventor OR any manager
+     if (!this.inventor?.removeFromWorld && distance(human, this.inventor) < this.inventor.socialReach) return true;
+     for (let manager of this.managers) {
+         if (!manager.removeFromWorld && distance(human, manager) < manager.socialReach) return true;
+     }
+     return false;
+ }
+
+ Note: isWithinReach iterates managers, but it's only called during trade building (infrequent), not every tick.
+
+ 2e. Cascading deprecation
+
+ When a trade is deprecated, also deprecate all child trades:
+ deprecate() {
+     this.deprecated = true;
+     for (let child of this.childTrades) {
+         child.deprecate();
+     }
+ }
+
+ ---
+ Step 3: Modify Surplus Flow for ALL Trades (trade.js invoke)
+
+ Replace the current surplus distribution block (lines 82-92) with:
+
+ // Surplus distribution
+ const surplus_in = amountIn * this.surpluses[side];
+ const surplus_out = amountInOpposite - fulfilledOut;
+
+ const perpetualRate = PARAMS.inventorPerpetualRoyalty;
+ if (!this.inventor?.removeFromWorld && perpetualRate > 0) {
+     this.inventor.supply[resourceIn] += surplus_in * perpetualRate;
+     this.inventor.supply[resourceOut] += surplus_out * perpetualRate;
+     this.inventor.totalRoyalties[resourceIn] += surplus_in * perpetualRate;
+     this.inventor.totalRoyalties[resourceOut] += surplus_out * perpetualRate;
+ }
+ this.supply[resourceIn] += surplus_in * (1 - perpetualRate);
+ this.supply[resourceOut] += surplus_out * (1 - perpetualRate);
+
+ This applies to ALL trades (level-1 and above). With inventorPerpetualRoyalty = 0, all surplus goes to trade.supply[].
+
+ ---
+ Step 4: Rewrite buildMultiLevelTrades() (human.js)
+
+ Logic:
+
+ For each trade T this agent knows about (from my_trades):
+     For each resource R where T.supply[R] > minTradeSupplyForHierarchy:
+         // T has accumulated surplus of R — opportunity to build a level-2+ trade
+
+         Find agents within my social reach
+         For each other resource S (S != R):
+             Compute value_ratios = [agent.valuations[S] / agent.valuations[R]] for all nearby agents
+             Compute mean, std of value_ratios
+             Compute exchange rate & surplus (same mechanism as buildTrades)
+             Compute expected_volume, cost_to_establish
+
+             If profitable:
+                 Build new Trade(S, R, Sin, Sout, Rin, Rout, this, parentTrade=T, parentSide='B')
+                 Register as child: T.childTrades.push(newTrade)
+                 Add to trademanager.trades
+                 Distribute to agents within reach — ONLY agent-facing side:
+                     human.my_trades[S][R].push({trade: newTrade, side: 'A'})
+                     // Do NOT add side 'B' — it's parent-backed
+                 break  // one trade per turn
+
+ Key differences from buildTrades():
+ - Iterates over known trades' supplies, not just resource pairs
+ - Only distributes agent-facing side (not both sides)
+ - Higher labor cost (hierarchicalTradeCostMultiplier)
+ - Checks parentTrade.supply[R] > minTradeSupplyForHierarchy threshold
+
+ Note on induction:
+
+ This naturally handles level-3+ trades. If a level-2 trade has accumulated supply (from its own surplus),
+ buildMultiLevelTrades() will detect it and potentially build a level-3 trade on top. No special code per level.
+
+ ---
+ Step 5: Update TradeManager (trademanager.js)
+
+ 5a. Modified update cycle:
+
+ update() {
+     const shuffledHumans = shuffleArray(this.automata.humans);
+
+     // 1. Build level-1 trades
+     for (let human of shuffledHumans) human.buildTrades();
+
+     // 2. Build hierarchical trades (level-2+)
+     for (let human of shuffledHumans) human.buildMultiLevelTrades();
+
+     // 3. Update valuations
+     for (let human of shuffledHumans) human.updateResourceValuations();
+
+     // 4. Execute trades (all levels — agents invoke the same way)
+     for (let human of shuffledHumans) human.makeRandomTrades();
+
+     // 5. Clear escrows (level-1 only; level-2+ don't use escrow on backed side)
+     for (let trade of this.trades) trade.clearEscrow();
+
+     // 6. Periodic cleanup (existing logic + hierarchical additions)
+     // ...
+ }
+
+ 5b. Trade cleanup additions:
+
+ When deprecating a trade, use trade.deprecate() to cascade to children. Also remove dead humans from trade.managers:
+
+ // In the periodic cleanup block:
+ for (let trade of this.trades) {
+     // Clean dead managers
+     for (let manager of trade.managers) {
+         if (manager.removeFromWorld) trade.managers.delete(manager);
+     }
+     // Deprecate parent-backed trades if parent is deprecated
+     if (trade.parentTrade?.deprecated) {
+         trade.deprecate();
+     }
+ }
+
+ ---
+ Step 6: Update Trade Data View (tradeview.js)
+
+ Add a "Lvl" column showing trade.level. Optionally show parent trade ID for hierarchical trades. This helps visually confirm
+ hierarchies are forming.
+
+ ---
+ Step 7: Clean Up Dead Managers (automata.js)
+
+ When humans die (are removed from the world), they should be cleaned from any trade's manager set. This can be handled in the
+ TradeManager cleanup (Step 5b) rather than in Automata directly, since TradeManager already iterates trades periodically.
+
+ ---
+ Implementation Order
+
+ 1. params.js — add new parameters
+ 2. trade.js — extend constructor, modify surplus flow, add hierarchical invoke path, add reach/deprecation methods
+ 3. human.js — rewrite buildMultiLevelTrades(), adjust makeRandomTrades() if needed
+ 4. trademanager.js — integrate hierarchical trade building and cleanup
+ 5. tradeview.js — add level column
+ 6. Test end-to-end: run simulation, verify level-1 trades still work, observe level-2 trades forming
+
+ ---
+ Verification
+
+ 1. Level-1 regression: Run sim, confirm level-1 trades still form and execute normally. Surplus should now accumulate in
+ trade.supply[] instead of going to inventor (since inventorPerpetualRoyalty = 0).
+ 2. Level-2 emergence: After level-1 trades run for a while and accumulate supply, verify level-2 trades are built. Check
+ TradeDataView for trades with level > 1.
+ 3. Conservation check: sum_all_resources(r) in automata.js already sums trade supply and escrow — verify resource conservation
+  still holds.
+ 4. Cascading deprecation: Deprecate a level-1 trade and verify its child trades are also deprecated.
+ 5. Manager reach: Verify that when a new manager invokes a level-2 trade, the parent trade's effective reach expands.
+ 6. Hierarchy depth: With extreme parameters (high production, concentrated resources), verify level-3+ trades can emerge.

@@ -10,6 +10,7 @@ class TradeManager {
         this.totalTrades = 0;
         this.totalTradesSucceeded = 0;
         this.all_resource_pairs = allResourcePairs();
+        this.all_resource_pairs_with_labor = allResourcePairsWithLabor();
         this.total_trades_made = 0;
         this.clear_unused_trades_ticker = 0;
     }
@@ -22,6 +23,7 @@ class TradeManager {
             // have humans build trades here?
             // if (human.buildTrades()) break; // only build one trade per cycle?
             human.buildTrades();
+            // human.buildMultiLevelTrades();
         }
 
         for (let human of shuffledHumans) {
@@ -74,6 +76,25 @@ function allResourcePairs() {
     //     }
     // }
     
+    for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+            if (j !== i) pairs.push([i, j]);
+        }
+    }
+    return pairs;
+}
+
+
+function allResourcePairsWithLabor() {
+    const N = PARAMS.numResources + PARAMS.numAlternativeResources;
+    // const N = PARAMS.numResources;
+    const pairs = [];
+    // for (let i = 0; i < N; i++) {
+    //     for (let j = i+1; j < N; j++) {
+    //         pairs.push([i, j]);
+    //     }
+    // }
+
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
             if (j !== i) pairs.push([i, j]);

@@ -2,11 +2,15 @@
 
 
 class Trade {
+    static lastTradeId = 0;
 
     // NOTE: A and B are the two concrete sides of the trade, not specific resources. E.g. one agent gives Ain and gets Aout, or Bin and gets Bout.
     // X and Y are variables representing sides
     constructor(resourceA, resourceB, Ain, Aout, Bin, Bout, inventor) {
         assert(Ain >= Bout && Bin >= Aout, `Trade must have non-negative surplus: Ain ${Ain.toFixed(2)}, Aout ${Aout.toFixed(2)}, Bin ${Bin.toFixed(2)}, Bout ${Bout.toFixed(2)}`);
+        this.id = Trade.lastTradeId;
+        Trade.lastTradeId += 1;
+
         this.inventor = inventor;
         this.resourcesIn = {A: resourceA, B: resourceB};
         this.laborRequired = (Ain + Bin) * PARAMS.laborPerResourceUnit;

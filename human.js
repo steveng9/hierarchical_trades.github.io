@@ -150,7 +150,7 @@ class Human {
         gameEngine.total_produced[PARAMS.numResources] += PARAMS.laborPerCycle;
         this.spendEnergy(PARAMS.workEnergyCost);
     }
-
+    //
     buildTrades() {
         let anyTradesBuilt = false;
         const humansWithinReach = this.humansWithinReach();
@@ -186,7 +186,7 @@ class Human {
             ) {
                 // console.log(`volume: ${expected_volume.toFixed(2)}, cost: ${cost_to_establish.toFixed(2)}, labor reserved ${this.alternativeSupply[0]}`)
                 anyTradesBuilt = true;
-                
+
                 const newTrade = new Trade(r1, r2, r1_in, r2_out, r2_in, r1_out, this);
                 this.num_trades_built += 1;
 
@@ -195,7 +195,70 @@ class Human {
                 //     this.trades_built[r1][r2].deprecated = true;
                 // }
                 // this.trades_built[r1][r2] = newTrade;
-                
+
+                // assert(r1_in / r2_out <= r2_in / r1_out + Number.EPSILON*10, `${(r1_in / r2_out).toFixed(2)}, ${(r1_in / r2_out).toFixed(2)}`);
+                // console.log(`new trade: IN ${r1}, OUT ${r2}, Ain: ${r1_in}, Bout: ${r1_out}, Bin: ${r2_in}, Aout: ${r1_out}`)
+                gameEngine.automata.trademanager.trades.push(newTrade);
+                gameEngine.automata.trademanager.total_trades_made += 1;
+                for (let human of humansWithinReach) {
+                    human.my_trades[r1][r2].push({trade: newTrade, side: 'A'});
+                    human.my_trades[r2][r1].push({trade: newTrade, side: 'B'});
+                }
+                this.alternativeSupply[0] -= cost_to_establish;
+                break; // only create one trade per turn?
+            }
+        }
+        return anyTradesBuilt;
+    }
+
+    buildMultiLevelTrades() {
+        let anyTradesBuilt = false;
+        const humansWithinReach = this.humansWithinReach();
+        if (humansWithinReach.length <= 1) return false;
+        if (this.alternativeSupply[0] <= .0001) return false; // doesn't have any labor to create a trade
+
+
+        for (let [r1, r2] of shuffleArray(gameEngine.automata.trademanager.all_resource_pairs_with_labor)) {
+            const value_ratios = [];
+            let ave_trades_already_available = 0;
+            for (let human of humansWithinReach) {
+                value_ratios.push(human.resource_valuations[r1] / human.resource_valuations[r2]);
+                ave_trades_already_available += human.my_trades[r1][r2].length;
+                assert(human.my_trades[r1][r2].length === human.my_trades[r2][r1].length, `${human.my_trades[r1][r2].length} != ${human.my_trades[r2][r1].length}...trades are always given to humans in pairs! If they have one 'side' of the trade, then they should have the other, always.`);
+            }
+            ave_trades_already_available /= humansWithinReach.length;
+
+
+            const distribution = meanAndStd(value_ratios);
+            const trade_points_distance_from_mean = Math.max(Math.min(distribution.std * PARAMS.surplus_multiplier, distribution.mean/2), .000001);
+            assert(trade_points_distance_from_mean >= 0, `weird: ${trade_points_distance_from_mean}`);
+            // todo: update this variable to be correct
+            const newTradeSurplus_R2 = 2 * trade_points_distance_from_mean;
+            // todo: update this variable to be correct
+            const expected_volume = newTradeSurplus_R2 * humansWithinReach.length * PARAMS.expected_volume_multiplier / (ave_trades_already_available**3 + 1);
+            // todo: update this variable to be correct
+            const cost_to_establish = Math.pow(this.socialReach, 1/2) * PARAMS.build_labor_per_reach;
+            const r1_in = 1;
+            const r1_out = 1;
+            const r2_in = distribution.mean + trade_points_distance_from_mean;
+            const r2_out = distribution.mean - trade_points_distance_from_mean;
+
+            if (cost_to_establish <= this.alternativeSupply[0] &&
+                expected_volume > cost_to_establish
+                && r1_in / r2_out <= r2_in / r1_out
+            ) {
+                // console.log(`volume: ${expected_volume.toFixed(2)}, cost: ${cost_to_establish.toFixed(2)}, labor reserved ${this.alternativeSupply[0]}`)
+                anyTradesBuilt = true;
+
+                const newTrade = new Trade(r1, r2, r1_in, r2_out, r2_in, r1_out, this);
+                this.num_trades_built += 1;
+
+                // // only do this if replace new trades.
+                // if (this.trades_built[r1][r2]) {
+                //     this.trades_built[r1][r2].deprecated = true;
+                // }
+                // this.trades_built[r1][r2] = newTrade;
+
                 // assert(r1_in / r2_out <= r2_in / r1_out + Number.EPSILON*10, `${(r1_in / r2_out).toFixed(2)}, ${(r1_in / r2_out).toFixed(2)}`);
                 // console.log(`new trade: IN ${r1}, OUT ${r2}, Ain: ${r1_in}, Bout: ${r1_out}, Bin: ${r2_in}, Aout: ${r1_out}`)
                 gameEngine.automata.trademanager.trades.push(newTrade);
@@ -221,6 +284,7 @@ class Human {
         }
         return humansWithinReach;
     }
+
 
 
 
