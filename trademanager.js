@@ -2,80 +2,95 @@
 class TradeManager {
     constructor(automata) {
         this.automata = automata;
-        this.trades = [
-            // new Trade(0, 1, 3, 2.99, 3, 2),
-            // new Trade(0, 2, 3, 2.99, 3, 2),
-            // new Trade(1, 2, 3, 2.99, 3, 2)
-        ];
+        this.trades = [];
         this.totalTrades = 0;
         this.totalTradesSucceeded = 0;
         this.all_resource_pairs = allResourcePairs();
         this.all_resource_pairs_with_labor = allResourcePairsWithLabor();
         this.total_trades_made = 0;
         this.clear_unused_trades_ticker = 0;
+
+        // Track total trades ever built per level (persists even after deprecation)
+        this.totalTradesByLevel = {};
     }
 
     update() {
-        // todo: change ordering here
         const shuffledHumans = shuffleArray(this.automata.humans);
 
+        // 1. Build level-1 trades
         for (let human of shuffledHumans) {
-            // have humans build trades here?
-            // if (human.buildTrades()) break; // only build one trade per cycle?
             human.buildTrades();
-            // human.buildMultiLevelTrades();
         }
 
+        // 2. Build hierarchical trades (level-2+)
+        for (let human of shuffledHumans) {
+            human.buildMultiLevelTrades();
+        }
+
+        // 3. Update valuations
         for (let human of shuffledHumans) {
             human.updateResourceValuations();
-            // human.my_trades = [
-            //     {trade: this.trades[0], side: 'A'}, {trade: this.trades[0], side: 'B'},
-            //     {trade: this.trades[1], side: 'A'}, {trade: this.trades[1], side: 'B'},
-            //     {trade: this.trades[2], side: 'A'}, {trade: this.trades[2], side: 'B'},
-            // ];
         }
 
+        // 4. Execute trades (all levels — agents invoke the same way)
         for (let human of shuffledHumans) {
-            // const result = human.makeOnlyFavorableTrades();
-            const result = human.makeRandomTrades();
-            // this.totalTrades += result.sumTradesAttempted;
-            // this.totalTradesSucceeded += result.sumTradesAccepted;
+            human.makeRandomTrades();
         }
 
-        for (let trade of this.trades) trade.clearEscrow();
+        // 5. Clear escrows (level-1 trades use escrow; hierarchical trades don't on backed side)
+        for (let trade of this.trades) {
+            trade.clearEscrow();
+        }
 
-        
+        // 6. Periodic cleanup
         this.clear_unused_trades_ticker += 1;
         if (this.clear_unused_trades_ticker > PARAMS.clear_trades_every) {
-            for (let i = this.trades.length - 1; i >= 0; i--) {
-                const trade = this.trades[i];
-                if (trade.invocations_since_last_checked.A == 0 || trade.invocations_since_last_checked.B == 0) {
-                    trade.deprecated = true;
-                    this.trades.splice(i, 1);
-                }
-                trade.invocations_since_last_checked.A = 0;
-                trade.invocations_since_last_checked.B = 0;
-            }
+            this.cleanupTrades();
             this.clear_unused_trades_ticker = 0;
         }
     }
 
-    
+    cleanupTrades() {
+        for (let i = this.trades.length - 1; i >= 0; i--) {
+            const trade = this.trades[i];
 
+            // Clean dead managers
+            trade.cleanDeadManagers();
 
+            // Deprecate if parent is deprecated
+            if (trade.parentTrade?.deprecated && !trade.deprecated) {
+                trade.deprecate();
+            }
 
+            // Remove unused trades (not invoked on both sides for level-1, or agent side for hierarchical)
+            if (!trade.deprecated) {
+                if (trade.isHierarchical) {
+                    const agentSide = trade.agentSide();
+                    if (trade.invocations_since_last_checked[agentSide] === 0) {
+                        trade.deprecate();
+                    }
+                } else {
+                    if (trade.invocations_since_last_checked.A === 0 || trade.invocations_since_last_checked.B === 0) {
+                        trade.deprecate();
+                    }
+                }
+            }
+
+            // Remove deprecated trades from the active list
+            if (trade.deprecated) {
+                this.trades.splice(i, 1);
+            }
+
+            // Reset invocation counters
+            trade.invocations_since_last_checked.A = 0;
+            trade.invocations_since_last_checked.B = 0;
+        }
+    }
 }
 
 function allResourcePairs() {
-    // const N = PARAMS.numResources + PARAMS.numAlternativeResources;
     const N = PARAMS.numResources;
     const pairs = [];
-    // for (let i = 0; i < N; i++) {
-    //     for (let j = i+1; j < N; j++) {
-    //         pairs.push([i, j]);
-    //     }
-    // }
-    
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
             if (j !== i) pairs.push([i, j]);
@@ -84,17 +99,9 @@ function allResourcePairs() {
     return pairs;
 }
 
-
 function allResourcePairsWithLabor() {
     const N = PARAMS.numResources + PARAMS.numAlternativeResources;
-    // const N = PARAMS.numResources;
     const pairs = [];
-    // for (let i = 0; i < N; i++) {
-    //     for (let j = i+1; j < N; j++) {
-    //         pairs.push([i, j]);
-    //     }
-    // }
-
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
             if (j !== i) pairs.push([i, j]);

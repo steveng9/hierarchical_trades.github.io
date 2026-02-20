@@ -3,63 +3,58 @@ class DataManager {
         this.automata = automata;
         this.vis_graph_frequency = 10;
 
-        // population data
         this.simSpeeds = [];
         this.humanPopulation = [];
         this.humans_analyzed = [];
         this.laborers = 0;
 
-        // Initialize the Histogram instance for visualization
-        let graphX = PARAMS.margin;
-        let graphY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
+        // Layout: panels below the forest
+        const leftX = PARAMS.margin;
+        const rightX = PARAMS.margin + PARAMS.leftpanelWidth + PARAMS.margin;
+        const belowForestY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
 
-        
-        const hdv = new HumanDataView(graphX, graphY);
+        // Left column: HumanDataView (clickable) + VariableViewer
+        const hdv = new HumanDataView(leftX, belowForestY);
         gameEngine.addGraph(hdv);
-        
-        gameEngine.addGraph(new VariableViewer(graphX, graphY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
+        gameEngine.clickCapableGraphs.push(hdv);
+        this.humanDataView = hdv;
+
+        gameEngine.addGraph(new VariableViewer(leftX, belowForestY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
             "generation": this.automata.generation,
-            "simulation speed (gen / sec)": gameEngine.updatesPerSecond.toFixed(2),
-            // "sum trades": gameEngine.automata.trademanager.totalTrades,
-            // "sum trades succeeded": gameEngine.automata.trademanager.totalTradesSucceeded.toFixed(2),
+            "sim speed (gen/s)": gameEngine.updatesPerSecond.toFixed(0),
             "num humans": this.automata.humans.length,
             "num laborers": this.laborers,
-            "total trades": gameEngine.automata.trademanager.trades.length,
-            "total trades built": gameEngine.automata.trademanager.total_trades_made,
+            "active trades": gameEngine.automata.trademanager.trades.length,
+            "total built": gameEngine.automata.trademanager.total_trades_made,
+            "by level": Object.entries(gameEngine.automata.trademanager.totalTradesByLevel).map(([k, v]) => `L${k}:${v}`).join(' ') || '--',
             "total R": gameEngine.total_existing_actual[0].toFixed(2),
-            "Expected R": gameEngine.total_existing_expected[0].toFixed(2),
+            "expected R": gameEngine.total_existing_expected[0].toFixed(2),
         })));
 
-
-        const tdv = new TradeDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY )
+        // Right column: TradeDataView + SelectionDataView
+        const tdv = new TradeDataView(rightX, belowForestY);
         gameEngine.clickCapableGraphs.push(tdv);
-        gameEngine.addGraph(new SelectionDataView(graphX + PARAMS.leftpanelWidth + PARAMS.margin, graphY + PARAMS.margin + tdv.panelHeight , this));
-        // gameEngine.addGraph(new Graph(graphX, graphY + 650, [this.simSpeeds], "simulation speed (gen / sec)"));
 
-        // gameEngine.addGraph(new VariableHistogramViewer(graphX, 785 + graphY, "Average Q Values"));
+        gameEngine.addGraph(new SelectionDataView(rightX, belowForestY + tdv.panelHeight + PARAMS.margin, this));
     }
 
-
     updateData() {
-        let humanPop = this.automata.humans.length;
-        this.humanPopulation.push(humanPop);
+        this.humanPopulation.push(this.automata.humans.length);
         this.simSpeeds.push(gameEngine.updatesPerSecond);
 
-        for (var i = this.humans_analyzed.length - 1; i >= 0; --i) {
+        for (let i = this.humans_analyzed.length - 1; i >= 0; --i) {
             if (this.humans_analyzed[i].removeFromWorld) {
                 this.humans_analyzed.splice(i, 1);
             }
-        }   
+        }
 
         this.laborers = 0;
         for (let human of gameEngine.automata.humans) {
             if (human.is_laborer) this.laborers += 1;
         }
-
     }
 
     analyze_humans_in(x1, x2, y1, y2) {
-        const forest = this.automata.forest;
         this.humans_analyzed = [];
         for (let human of this.automata.humans) {
             if (human.x >= x1 && human.x <= x2 && human.y >= y1 && human.y <= y2) {
@@ -68,16 +63,11 @@ class DataManager {
         }
     }
 
-    logData() {
-    }
+    logData() {}
 
     update() {
-        // Update data each frame
-        if(this.automata.generation % PARAMS.reportingPeriod === 0) this.updateData();
-
+        if (this.automata.generation % PARAMS.reportingPeriod === 0) this.updateData();
     }
 
-    draw(ctx) {
-        // Draw the histogram, handled by the Histogram class in the game engine
-    }
+    draw(ctx) {}
 }

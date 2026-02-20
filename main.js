@@ -41,6 +41,10 @@ function toggleSocialReach() {
     PARAMS.show_social_reach = !PARAMS.show_social_reach;
 }
 
+function clearHumanSelection() {
+    gameEngine.automata.datamanager.humanDataView.clearSelection();
+}
+
 
 
 ASSET_MANAGER.downloadAll(function () {

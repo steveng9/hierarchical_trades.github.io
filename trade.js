@@ -1,12 +1,13 @@
 
 
-
 class Trade {
     static lastTradeId = 0;
 
-    // NOTE: A and B are the two concrete sides of the trade, not specific resources. E.g. one agent gives Ain and gets Aout, or Bin and gets Bout.
-    // X and Y are variables representing sides
-    constructor(resourceA, resourceB, Ain, Aout, Bin, Bout, inventor) {
+    // NOTE: A and B are the two concrete sides of the trade, not specific resources.
+    // E.g. one agent gives Ain and gets Aout, or Bin and gets Bout.
+    // X and Y are variables representing sides.
+    // For hierarchical trades: parentSide is backed by parentTrade's supply, the other side is agent-facing.
+    constructor(resourceA, resourceB, Ain, Aout, Bin, Bout, inventor, parentTrade = null, parentSide = null) {
         assert(Ain >= Bout && Bin >= Aout, `Trade must have non-negative surplus: Ain ${Ain.toFixed(2)}, Aout ${Aout.toFixed(2)}, Bin ${Bin.toFixed(2)}, Bout ${Bout.toFixed(2)}`);
         this.id = Trade.lastTradeId;
         Trade.lastTradeId += 1;
@@ -15,12 +16,11 @@ class Trade {
         this.resourcesIn = {A: resourceA, B: resourceB};
         this.laborRequired = (Ain + Bin) * PARAMS.laborPerResourceUnit;
         this.invocations = {A: 0, B: 0};
-        this.invocations_since_last_checked = {A: 0, B: 0}; 
+        this.invocations_since_last_checked = {A: 0, B: 0};
         this.volumeMoved = {A: 0, B: 0};
 
         this.XinXout = {A: Ain / Aout, B: Bin / Bout};
-        // this.YoutXin = {A: Bout / Ain, B: Aout / Bin};
-        this.YinXout = {A: Bin / Aout, B: Ain / Bout}; 
+        this.YinXout = {A: Bin / Aout, B: Ain / Bout};
         this.XinYin = {A: Ain / Bin, B: Bin / Ain};
 
         this.surpluses = {A: (Ain - Bout) / Ain, B: (Bin - Aout) / Bin};
@@ -33,34 +33,53 @@ class Trade {
         this.deprecated = false;
 
         this.trade_partners = new Map();
+
+        // Hierarchy fields
+        this.parentTrade = parentTrade;     // lower-level trade backing one side (null for level-1)
+        this.parentSide = parentSide;       // which side of THIS trade is auto-supplied by parent ('A' or 'B', null for level-1)
+        this.level = parentTrade ? parentTrade.level + 1 : 1;
+        this.managers = new Set();          // humans who manage this trade (via higher-level trade invocations)
+        this.childTrades = [];              // trades built on top of this one
     }
 
-    invoke(human, side, quantity) { // quantity to contribute to the trade, i.e. in terms of resource on 'side'
+    get isHierarchical() {
+        return this.parentTrade !== null;
+    }
+
+    agentSide() {
+        if (!this.isHierarchical) return null;
+        return opposite_side(this.parentSide);
+    }
+
+    invoke(human, side, quantity) {
+        if (this.isHierarchical) {
+            return this.invokeHierarchical(human, side, quantity);
+        }
+        return this.invokeLevel1(human, side, quantity);
+    }
+
+    // Level-1 trade invocation: both sides are agent-driven, uses escrow
+    invokeLevel1(human, side, quantity) {
         this.invocations[side] += 1;
         this.invocations_since_last_checked[side] += 1;
 
         const resourceOut = this.resourceInOppositeSide(side);
-        
         const resourceIn = this.resourcesIn[side];
         const desiredOut = quantity / this.XinXout[side];
         const availableOut = this.escrow[resourceOut] / this.YinXout[side];
         const fulfilledOut = Math.min(availableOut, desiredOut);
-        assert(fulfilledOut >= 0 - Number.EPSILON*10, `this should be true if there is any resourceOut in escrow: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
+        assert(fulfilledOut >= 0 - Number.EPSILON * 10, `fulfilledOut should be >= 0: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
         const amountIn = fulfilledOut * this.XinXout[side];
+
         if (this.escrow[resourceOut] > 0) {
-            // if (amountIn > human.supply[resourceIn]) {
-            //     console.log("here")
-            // }
-            assert(amountIn <= human.supply[resourceIn], `human ${human.id} does not have enough supply to FULFILL trade!... has ${human.supply[resourceIn]}, offered ${amountIn}`);
-            
-            // side X
+            assert(amountIn <= human.supply[resourceIn], `human ${human.id} does not have enough supply to FULFILL trade: has ${human.supply[resourceIn]}, offered ${amountIn}`);
+
+            // Agent side
             human.supply[resourceIn] -= amountIn;
             human.supply[resourceOut] += fulfilledOut;
             human.volumeTradedFor[resourceOut] += fulfilledOut;
-            
-            
-            
-            // side Y
+
+            // Opposite side
             const amountInOpposite = amountIn / this.XinYin[side];
             this.escrow[resourceOut] -= amountInOpposite;
             const trade_partners = this.fulfillRequest(amountInOpposite, opposite_side(side));
@@ -69,27 +88,13 @@ class Trade {
                 this.trade_partners.set(key, (this.trade_partners.get(key) || 0) + 1);
             });
 
-            // surplus
+            // Surplus
             const surplus_in = amountIn * this.surpluses[side];
-            const tolerance = Number.EPSILON*20;
-            assert(Math.abs((amountInOpposite - fulfilledOut) - (amountInOpposite * this.surpluses[opposite_side(side)])) < tolerance, `should be equal: ${amountInOpposite - fulfilledOut}, ${amountInOpposite * this.surpluses[opposite_side(side)]}`)
-            // this.supply[resourceOut] += amountInOpposite * this.surpluses[opposite_side(side)];
-            const surplus_out = amountInOpposite - fulfilledOut; // surplus from the other side
-            
+            const surplus_out = amountInOpposite - fulfilledOut;
+
             this.labor -= amountIn * PARAMS.laborPerResourceUnit;
-            
-            // inventor
-            if (this.inventor?.removeFromWorld) {
-                this.supply[resourceIn] += surplus_in;
-                this.supply[resourceOut] += surplus_out;
-            } else {
-                this.supply[resourceIn] += surplus_in * (1 - PARAMS.royalty);
-                this.supply[resourceOut] += surplus_out * (1 - PARAMS.royalty);
-                this.inventor.supply[resourceIn] += surplus_in * PARAMS.royalty; 
-                this.inventor.supply[resourceOut] += surplus_out * PARAMS.royalty;
-                this.inventor.totalRoyalties[resourceIn] += surplus_in * PARAMS.royalty; 
-                this.inventor.totalRoyalties[resourceOut] += surplus_out * PARAMS.royalty; 
-            }
+
+            this.distributeSurplus(surplus_in, surplus_out, resourceIn, resourceOut);
 
             this.volumeMoved[side] += amountIn;
             this.volumeMoved[opposite_side(side)] += amountInOpposite;
@@ -98,28 +103,134 @@ class Trade {
         if (amountIn < quantity) {
             this.addToEscrow(human, side, quantity - amountIn);
         }
-        
+
         return fulfilledOut;
+    }
+
+    // Hierarchical trade invocation: one side is backed by parentTrade's supply
+    invokeHierarchical(human, side, quantity) {
+        assert(side === this.agentSide(), `Cannot invoke parent-backed side of hierarchical trade`);
+
+        this.invocations[side] += 1;
+        this.invocations_since_last_checked[side] += 1;
+
+        const resourceIn = this.resourcesIn[side];
+        const resourceOut = this.resourceInOppositeSide(side);
+        const desiredOut = quantity / this.XinXout[side];
+
+        // Check parent trade's supply instead of escrow
+        const parentResourceOut = resourceOut;
+        const amountInOpposite = desiredOut * this.YinXout[side]; // how much parent needs to provide
+        const parentAvailable = this.parentTrade.supply[parentResourceOut];
+        const fulfilledRatio = Math.min(1, parentAvailable / amountInOpposite);
+        const fulfilledOut = desiredOut * fulfilledRatio;
+        const amountIn = fulfilledOut * this.XinXout[side];
+        const actualAmountFromParent = amountInOpposite * fulfilledRatio;
+
+        if (fulfilledOut > Number.EPSILON && amountIn > Number.EPSILON) {
+            assert(amountIn <= human.supply[resourceIn] + Number.EPSILON * 10, `human ${human.id} does not have enough supply for hierarchical trade: has ${human.supply[resourceIn]}, needed ${amountIn}`);
+
+            // Agent side: give resourceIn, get resourceOut
+            human.supply[resourceIn] -= amountIn;
+            human.supply[resourceOut] += fulfilledOut;
+            human.volumeTradedFor[resourceOut] += fulfilledOut;
+
+            // Parent side: parent gives resourceOut, receives resourceIn payment
+            this.parentTrade.supply[parentResourceOut] -= actualAmountFromParent;
+
+            // Parent receives payment (what opposite side would normally get as output)
+            const parentPayment = actualAmountFromParent / this.XinXout[this.parentSide]; // Bout equivalent
+            this.parentTrade.supply[resourceIn] += parentPayment;
+
+            // Surplus
+            const surplus_in = amountIn * this.surpluses[side];
+            const surplus_out = actualAmountFromParent - fulfilledOut;
+
+            this.distributeSurplus(surplus_in, surplus_out, resourceIn, resourceOut);
+
+            // Track trade partners (human <-> parent trade's inventor, if alive)
+            if (this.parentTrade.inventor && !this.parentTrade.inventor.removeFromWorld) {
+                const key = `${human.id}-${this.parentTrade.inventor.id}`;
+                this.trade_partners.set(key, (this.trade_partners.get(key) || 0) + 1);
+            }
+
+            // Agent becomes a manager of the parent trade
+            if (!this.parentTrade.managers.has(human)) {
+                this.parentTrade.managers.add(human);
+            }
+
+            this.volumeMoved[side] += amountIn;
+            this.volumeMoved[this.parentSide] += actualAmountFromParent;
+        }
+
+        return fulfilledOut;
+    }
+
+    // Distribute surplus based on management state
+    distributeSurplus(surplus_in, surplus_out, resourceIn, resourceOut) {
+        const isManaged = this.managers.size > 0;
+
+        if (this.inventor?.removeFromWorld) {
+            // Inventor dead — surplus stays in trade
+            this.supply[resourceIn] += surplus_in;
+            this.supply[resourceOut] += surplus_out;
+        } else if (!isManaged) {
+            // No managers yet — inventor gets surplus (incentive to invent)
+            this.inventor.supply[resourceIn] += surplus_in;
+            this.inventor.supply[resourceOut] += surplus_out;
+            this.inventor.totalRoyalties[resourceIn] += surplus_in;
+            this.inventor.totalRoyalties[resourceOut] += surplus_out;
+        } else {
+            // Trade IS managed — surplus goes to trade.supply[] for redistribution
+            const perpetualRate = PARAMS.inventorPerpetualRoyalty;
+            if (perpetualRate > 0) {
+                this.inventor.supply[resourceIn] += surplus_in * perpetualRate;
+                this.inventor.supply[resourceOut] += surplus_out * perpetualRate;
+                this.inventor.totalRoyalties[resourceIn] += surplus_in * perpetualRate;
+                this.inventor.totalRoyalties[resourceOut] += surplus_out * perpetualRate;
+            }
+            this.supply[resourceIn] += surplus_in * (1 - perpetualRate);
+            this.supply[resourceOut] += surplus_out * (1 - perpetualRate);
+        }
+    }
+
+    // Check if a human is within this trade's effective reach (inventor + managers)
+    isWithinReach(human) {
+        if (!this.inventor?.removeFromWorld && distance(human, this.inventor) < this.inventor.socialReach) return true;
+        for (let manager of this.managers) {
+            if (!manager.removeFromWorld && distance(human, manager) < manager.socialReach) return true;
+        }
+        return false;
+    }
+
+    // Cascade deprecation downward to all child trades
+    deprecate() {
+        this.deprecated = true;
+        for (let child of this.childTrades) {
+            child.deprecate();
+        }
+    }
+
+    // Remove dead humans from manager set
+    cleanDeadManagers() {
+        for (let manager of this.managers) {
+            if (manager.removeFromWorld) {
+                this.managers.delete(manager);
+            }
+        }
     }
 
     fulfillRequest(amountNeededTotal, side) {
         const trade_partners = [];
-        const resourceIn = this.resourcesIn[side];
         const resourceOut = this.resourcesIn[opposite_side(side)];
         const requests = this.requests[side];
         let amountFulfilledTotal = 0;
 
-        while (amountFulfilledTotal < amountNeededTotal - Number.EPSILON*10) {
-            // TODO: use more efficient queue data sructure for requests
-            // TODO: use either a priority queue, or order based on size, or randomize, instead of merely FIFO 
+        while (amountFulfilledTotal < amountNeededTotal - Number.EPSILON * 10) {
             const request = requests[0];
             const requestingHuman = request.human;
             trade_partners.push(requestingHuman);
             const amountFulfilled = Math.min(amountNeededTotal - amountFulfilledTotal, request.quantity);
-
-            // this step already taken care of in 'addToEscrow'
-            // assert(requestingHuman.supply[resourceIn] >= amountFulfilled, `requester ${requestingHuman.id} over-requested ${request.quantity}, only can fulfill ${requestingHuman.supply[resourceIn]}`);
-            // requestingHuman.supply[resourceIn] -= amountFulfilled;
 
             requestingHuman.supply[resourceOut] += amountFulfilled / this.XinXout[side];
             requestingHuman.volumeTradedFor[resourceOut] += amountFulfilled / this.XinXout[side];
@@ -127,7 +238,7 @@ class Trade {
 
             request.quantity -= amountFulfilled;
             if (request.quantity == 0) {
-                requests.splice(0, 1); // request is entirely fulfilled. 
+                requests.splice(0, 1);
             }
         }
         return trade_partners;
@@ -135,13 +246,11 @@ class Trade {
 
     addToEscrow(human, side, quantity) {
         const resourceIn = this.resourcesIn[side];
-        
-        assert(quantity <= human.supply[resourceIn], `human ${human.id} does not have enough supply to ESCROW for trade!... has ${human.supply[resourceIn]}, offered ${quantity}`);
+        assert(quantity <= human.supply[resourceIn], `human ${human.id} does not have enough supply to ESCROW: has ${human.supply[resourceIn]}, offered ${quantity}`);
         this.escrow[resourceIn] += quantity;
         this.requests[side].push({human: human, side: side, quantity: quantity});
-        human.supply[resourceIn] -= quantity; // temporarily hold supply so it isn't promised elsewhere.
+        human.supply[resourceIn] -= quantity;
     }
-
 
     clearEscrow() {
         for (let side of ['A', 'B']) {
@@ -151,26 +260,13 @@ class Trade {
         }
         this.escrow = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
         this.requests = {A: [], B: []};
-
-        
     }
 
-
-    outResourceFromIn(resource) {
-        if (resource === this.resources.A) return this.resources.B;
-        if (resource === this.resources.B) return this.resources.A;
-        throw "resource not part of trade";
-    }
-
-    
     resourceInOppositeSide(side) {
         if (side === 'A') return this.resourcesIn.B;
         if (side === 'B') return this.resourcesIn.A;
         throw "resource not part of trade";
     }
-
-
-
 }
 
 function opposite_side(side) {

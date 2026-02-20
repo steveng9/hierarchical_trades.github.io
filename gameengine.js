@@ -92,16 +92,15 @@ class GameEngine {
     }
     draw() {
         if (this.automata.generation % PARAMS.reportingPeriod === 0) {
-            this.ctx.clearRect(PARAMS.margin, PARAMS.margin, PARAMS.forestwidth, PARAMS.forestheight); // clear sim square only
+            // Clear forest area
+            this.ctx.clearRect(PARAMS.margin, PARAMS.margin, PARAMS.forestwidth, PARAMS.forestheight);
             for (var i = 0; i < this.entities.length; i++) {
                 this.entities[i].draw(this.ctx);
             }
-        
-//        this.ctx.clearRect(0, 0, this.ctx.canvas.height, this.ctx.canvas.width); // clear sim square only
-//        for (var i = 0; i < this.entities.length; i++) {
-//            this.entities[i].draw(this.ctx);
-//        }
-            this.ctx.clearRect(PARAMS.margin, PARAMS.margin + PARAMS.forestheight + PARAMS.margin, PARAMS.forestwidth, this.ctx.canvas.height - (PARAMS.margin + PARAMS.forestheight + PARAMS.margin)); // clear graphs only
+
+            // Clear panels area (full width below forest)
+            const panelsY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
+            this.ctx.clearRect(0, panelsY, this.ctx.canvas.width, this.ctx.canvas.height - panelsY);
             for (var i = 0; i < this.graphs.length; i++) {
                 this.graphs[i].draw(this.ctx);
             }

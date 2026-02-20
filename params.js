@@ -4,8 +4,8 @@ var PARAMS = {
     show_social_reach: false,
     margin: 20,
     leftpanelWidth: 450,
-    rightpanelwidth: 630,
-    canvaswidth: 1140,
+    rightpanelwidth: 750,
+    canvaswidth: 1240,
 
 
 
@@ -46,6 +46,12 @@ var PARAMS = {
     expected_volume_multiplier: 2,
     clear_trades_every: 100,
     royalty: 1,
+
+    // hierarchical trades
+    inventorPerpetualRoyalty: 0,        // fraction of surplus inventor keeps forever after trade is managed (0 = all goes to trade.supply)
+    minTradeSupplyForHierarchy: 5,      // minimum accumulated supply in a trade before a level-2+ trade can target it
+    hierarchicalTradeCostMultiplier: 1, // building a hierarchical trade costs more labor than level-1
+    min_rate_improvement: 0,            // minimum fractional improvement in XinXout over best existing trade to justify building (0 = allow all)
 
 
     // database

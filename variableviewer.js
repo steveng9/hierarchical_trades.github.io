@@ -4,59 +4,38 @@ class VariableViewer {
         this.y = y;
         this.label = label;
         this.variableGetter = variableGetter;
-
         this.xSize = PARAMS.leftpanelWidth;
         this.ySize = 140;
-        this.ctx = gameEngine.ctx;
-        this.colors = ["#00BB00", "#BB0000", "#00BBBB", "#CCCCCC"];
-        this.maxVal = 0;
     }
-    update() {
-    }
+
+    update() {}
+
     draw(ctx) {
-        // Check if the graph drawing is enabled
-        // if (!document.getElementById("graphs").checked) return;
+        ctx.save();
 
-        // Set the style for the box
-        this.ctx.strokeStyle = "#000000";
-        this.ctx.lineWidth = 1;
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x, this.y, this.xSize, this.ySize);
 
-        // Draw the box
-        this.ctx.strokeRect(this.x, this.y, this.xSize, this.ySize);
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "left";
+        ctx.font = "13px monospace";
 
-        // Set the style for the text
-        this.ctx.fillStyle = "#000000";
-        this.ctx.textAlign = "left";
-        this.ctx.font = "14px Arial";
+        const lineHeight = 18;
+        let drawX = this.x + 10;
+        let drawY = this.y + 18;
 
-        // Calculate the spacing between each variable display
-        const lineHeight = 20;
-        let startX = this.x + 10;
-        let startY = this.y + 20;
-
-        let i = 0;
         const variables = this.variableGetter();
-        // Iterate over the variables returned by the function
         for (let [key, value] of Object.entries(variables)) {
-            const text = `${key}: ${value}`;
+            ctx.fillText(`${key}: ${value}`, drawX, drawY);
+            drawY += lineHeight;
 
-            // Draw the text inside the box
-            this.ctx.fillText(text, startX, startY);
-
-            // Update the y position for the next variable
-            startY += lineHeight;
-
-            // Break the loop if the box height is exceeded
-            if (startY > this.y + this.ySize - 10) {
-                startY = this.y + 20;
-                startX += 260;
+            if (drawY > this.y + this.ySize - 10) {
+                drawY = this.y + 18;
+                drawX += 250;
             }
-
         }
 
+        ctx.restore();
     }
-
 }
-
-
-

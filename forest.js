@@ -30,15 +30,67 @@ class Forest {
   
     draw(ctx) {
         this.renderCells(ctx);
-        // this.renderPixels(ctx);
 
         if (this.selectedTrade) {
-            ctx.save();
-            ctx.strokeStyle = "rgba(0,0,0,0.5)";
-            ctx.lineWidth = 2;
+            this.drawTradeOverlay(ctx, this.selectedTrade);
+        }
+    }
 
-            for (let [key, value] of this.selectedTrade.trade_partners.entries()) {
-                // key is something like "3-7"
+    selectTrade(trade) {
+        this.selectedTrade = trade;
+    }
+
+    drawTradeOverlay(ctx, trade) {
+        ctx.save();
+
+        if (trade.isHierarchical) {
+            this.drawHierarchicalTradeOverlay(ctx, trade);
+        } else {
+            this.drawLevel1TradeOverlay(ctx, trade);
+        }
+
+        ctx.restore();
+    }
+
+    // Level-1: lines between trade partners (existing behavior)
+    drawLevel1TradeOverlay(ctx, trade) {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.lineWidth = 2;
+
+        for (let [key] of trade.trade_partners.entries()) {
+            const [idA, idB] = key.split("-").map(Number);
+            const h1 = gameEngine.automata.humanById.get(idA);
+            const h2 = gameEngine.automata.humanById.get(idB);
+
+            if (h1 && h2) {
+                ctx.beginPath();
+                ctx.moveTo(this.x + h1.x, this.y + h1.y);
+                ctx.lineTo(this.x + h2.x, this.y + h2.y);
+                ctx.stroke();
+            }
+        }
+
+        // Highlight inventor with a diamond
+        if (trade.inventor && !trade.inventor.removeFromWorld) {
+            this.drawInventorMarker(ctx, trade.inventor);
+        }
+
+        // If this trade has managers (via a level-2 trade), show them
+        if (trade.managers.size > 0) {
+            this.drawManagers(ctx, trade);
+        }
+    }
+
+    // Level-2+: show managers, parent trade network, and management lines
+    drawHierarchicalTradeOverlay(ctx, trade) {
+        const parentTrade = trade.parentTrade;
+
+        // 1) Draw the parent trade's partner network (faded, for context)
+        if (parentTrade) {
+            ctx.strokeStyle = "rgba(255, 140, 0, 0.2)";
+            ctx.lineWidth = 1;
+
+            for (let [key] of parentTrade.trade_partners.entries()) {
                 const [idA, idB] = key.split("-").map(Number);
                 const h1 = gameEngine.automata.humanById.get(idA);
                 const h2 = gameEngine.automata.humanById.get(idB);
@@ -51,14 +103,100 @@ class Forest {
                 }
             }
 
-            ctx.restore();
+            // Draw parent trade's inventor (orange diamond)
+            if (parentTrade.inventor && !parentTrade.inventor.removeFromWorld) {
+                this.drawMarker(ctx, parentTrade.inventor, "rgba(255, 140, 0, 0.8)", 8);
+            }
         }
 
+        // 2) Draw this trade's own partner lines (the level-2 trade's activity)
+        ctx.strokeStyle = "rgba(0, 100, 200, 0.5)";
+        ctx.lineWidth = 2;
+
+        for (let [key] of trade.trade_partners.entries()) {
+            const [idA, idB] = key.split("-").map(Number);
+            const h1 = gameEngine.automata.humanById.get(idA);
+            const h2 = gameEngine.automata.humanById.get(idB);
+
+            if (h1 && h2) {
+                ctx.beginPath();
+                ctx.moveTo(this.x + h1.x, this.y + h1.y);
+                ctx.lineTo(this.x + h2.x, this.y + h2.y);
+                ctx.stroke();
+            }
+        }
+
+        // 3) Draw managers of the parent trade (these are agents who invoked this level-2 trade)
+        if (parentTrade) {
+            this.drawManagers(ctx, parentTrade);
+
+            // Draw lines from each manager to the parent trade's inventor (the hierarchy)
+            if (parentTrade.inventor && !parentTrade.inventor.removeFromWorld) {
+                const inv = parentTrade.inventor;
+                ctx.strokeStyle = "rgba(0, 100, 200, 0.6)";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+
+                for (let manager of parentTrade.managers) {
+                    if (manager.removeFromWorld) continue;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + manager.x, this.y + manager.y);
+                    ctx.lineTo(this.x + inv.x, this.y + inv.y);
+                    ctx.stroke();
+                }
+
+                ctx.setLineDash([]);
+            }
+        }
+
+        // 4) Highlight this trade's inventor
+        if (trade.inventor && !trade.inventor.removeFromWorld) {
+            this.drawInventorMarker(ctx, trade.inventor);
+        }
     }
 
-    selectTrade(trade) {
-        this.selectedTrade = trade;
+    // Draw managers as orange circles
+    drawManagers(ctx, trade) {
+        ctx.strokeStyle = "rgba(255, 140, 0, 0.8)";
+        ctx.lineWidth = 2;
 
+        for (let manager of trade.managers) {
+            if (manager.removeFromWorld) continue;
+            ctx.beginPath();
+            ctx.arc(this.x + manager.x, this.y + manager.y, 10, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = "rgba(255, 140, 0, 0.9)";
+            ctx.font = "10px monospace";
+            ctx.textBaseline = "bottom";
+            ctx.fillText("mgr", this.x + manager.x + 12, this.y + manager.y - 2);
+        }
+    }
+
+    // Draw inventor as a diamond marker
+    drawInventorMarker(ctx, human) {
+        this.drawMarker(ctx, human, "rgba(0, 180, 0, 0.9)", 7);
+
+        ctx.fillStyle = "rgba(0, 180, 0, 0.9)";
+        ctx.font = "10px monospace";
+        ctx.textBaseline = "bottom";
+        ctx.fillText("inv", this.x + human.x + 10, this.y + human.y - 4);
+    }
+
+    // Draw a diamond-shaped marker at a human's position
+    drawMarker(ctx, human, color, size) {
+        const cx = this.x + human.x;
+        const cy = this.y + human.y;
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - size);
+        ctx.lineTo(cx + size, cy);
+        ctx.lineTo(cx, cy + size);
+        ctx.lineTo(cx - size, cy);
+        ctx.closePath();
+        ctx.fill();
     }
 
     setConcentrationRandomResource() {

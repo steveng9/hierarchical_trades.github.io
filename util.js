@@ -74,15 +74,6 @@ function numArray(n) {
     return arr;
 };
 
-function generateNormalSample(mean = 0, stdDev = 1) {
-    // box-muller transform
-    let u1 = Math.random();
-    let u2 = Math.random();
-
-    let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    return z0 * stdDev + mean;
-};
-
 function rgb(r, g, b) {
     return "rgb(" + r + "," + g + "," + b + ")";
 };

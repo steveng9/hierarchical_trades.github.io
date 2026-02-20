@@ -1,0 +1,21 @@
+
+  params.js: Added min_rate_improvement: 0 — fractional improvement in XinXout required over the best existing
+  trade to justify building. Set to 0 for now (allowing all), but you can dial it up (e.g., 0.05 = 5%
+  improvement required).
+
+  buildTrades() — two new guards:
+  1. Same-inventor dedup: If this inventor already has a non-deprecated trade for this resource pair
+  (trades_built[r1][r2]), skip entirely. The inventor's existing trade is tracked when built. Once it's
+  deprecated, they can build again.
+  2. Rate improvement check: If min_rate_improvement > 0, only build if the new trade's XinXout on at least one
+   side is better by that fraction than the best existing trade in the region.
+
+  buildMultiLevelTrades() — two new guards:
+  1. Same-inventor dedup: If this inventor already has an active (non-deprecated) child trade on this parent
+  trade, skip that parent entirely.
+  2. Same rate improvement check as level-1.
+
+  The same-inventor dedup alone should dramatically reduce the churn. With min_rate_improvement at 0, different
+   inventors can still compete freely — but you have the knob ready to tighten if needed.
+
+
