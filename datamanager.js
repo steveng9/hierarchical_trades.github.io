@@ -23,6 +23,7 @@ class DataManager {
             "generation": this.automata.generation,
             "sim speed (gen/s)": gameEngine.updatesPerSecond.toFixed(0),
             "num humans": this.automata.humans.length,
+            "births": this.automata.totalBirths,
             "num laborers": this.laborers,
             "active trades": gameEngine.automata.trademanager.trades.length,
             "total built": gameEngine.automata.trademanager.total_trades_made,
@@ -34,6 +35,7 @@ class DataManager {
         // Right column: TradeDataView + SelectionDataView
         const tdv = new TradeDataView(rightX, belowForestY);
         gameEngine.clickCapableGraphs.push(tdv);
+        this.tradeDataView = tdv;
 
         gameEngine.addGraph(new SelectionDataView(rightX, belowForestY + tdv.panelHeight + PARAMS.margin, this));
     }

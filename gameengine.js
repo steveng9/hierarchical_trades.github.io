@@ -139,29 +139,25 @@ class GameEngine {
                 this.update();
                 this.updateCount++;
             }
-            this.draw();
-            
-
 
             if (PARAMS.show_debug_info) {
                 const now = performance.now();
                 const delta = now - this.lastSecond;
                 if (delta >= PARAMS.periodic_check_interval) {
-                    // sim speed
                     this.updatesPerSecond = this.updateCount / (delta / 1000);
                     this.updateCount = 0;
                     this.lastSecond = now;
 
-                    // total resources check
                     for (let r = 0; r < (PARAMS.numResources); r++) {
                         this.total_existing_actual[r] = this.automata.sum_all_resources(r);
                         this.total_existing_expected[r] = this.total_produced[r] - this.total_consumed[r];
                     }
                 }
-
-                
             }
         }
+
+        // Always draw so clicks/selection changes are visible while paused
+        this.draw();
     }
 };
 

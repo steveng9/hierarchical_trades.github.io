@@ -57,6 +57,7 @@ class Human {
 
         this.work();
         this.eat();
+        this.tryReproduce();
     }
 
     draw(ctx) {
@@ -294,6 +295,30 @@ class Human {
             }
         }
         return false;
+    }
+
+    tryReproduce() {
+        if (this.total_energy() < PARAMS.reproductionEnergyThreshold) return;
+
+        // Child gets half the parent's current energy
+        const childEnergy = this.total_energy() / 2;
+        this.spendEnergy(childEnergy);
+
+        // Spawn nearby
+        const angle = Math.random() * 2 * Math.PI;
+        const dist = randomFloat(5, 30);
+        const cx = Math.max(0, Math.min(PARAMS.forestwidth - 1,  this.x + Math.cos(angle) * dist));
+        const cy = Math.max(0, Math.min(PARAMS.forestheight - 1, this.y + Math.sin(angle) * dist));
+
+        // Mutate heritable traits
+        const mutate = v => Math.max(0.001, v * (1 + generateNormalSample(0, PARAMS.reproductionMutationRate)));
+
+        const child = new Human({ x: cx, y: cy, energy: childEnergy });
+        child.socialReach  = mutate(this.socialReach);
+        child.productivity = mutate(this.productivity);
+
+        gameEngine.automata.add_human(child);
+        gameEngine.automata.totalBirths++;
     }
 
     humansWithinReach() {

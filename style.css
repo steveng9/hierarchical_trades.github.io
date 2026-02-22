@@ -111,11 +111,109 @@ button {
 }
 
 .db-connected {
-    background-color: #28a745; /* Bootstrap success color */
+    background-color: #28a745;
     border: 1px solid black;
 }
 
 .db-disconnected {
-    background-color: #dc3545; /* Bootstrap danger color */
+    background-color: #dc3545;
     border: 1px solid black;
 }
+
+/* Compact parameter rows */
+.param-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 3px 0;
+}
+.param-row .param-label {
+    flex: 0 0 108px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.param-row input[type=range] {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    height: 14px;
+    padding: 0;
+}
+.param-row .param-val {
+    flex: 0 0 34px;
+    font-size: 11px;
+    text-align: right;
+    font-family: monospace;
+}
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 3px 0;
+    font-size: 11px;
+}
+.check-row input[type=checkbox] {
+    width: auto;
+    margin: 0;
+}
+
+/* Saved configs panel */
+#saved-configs-panel {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    margin-top: 6px;
+    background: #f9f9f9;
+    font-size: 12px;
+}
+#saved-configs-panel summary {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    user-select: none;
+}
+#save-config-row {
+    display: flex;
+    gap: 4px;
+    margin: 6px 0 4px 0;
+    align-items: center;
+}
+#save-config-row input[type=text] {
+    flex: 1;
+    padding: 2px 4px;
+    font-size: 11px;
+    width: auto;
+}
+.btn-small {
+    padding: 2px 7px;
+    font-size: 11px;
+    margin: 0;
+    width: auto;
+    background: #007bff;
+    color: white;
+    border: 1px solid #0056b3;
+    cursor: pointer;
+}
+.btn-small:hover { background: #0056b3; }
+.btn-danger { background: #c0392b; border-color: #922b21; }
+.btn-danger:hover { background: #922b21; }
+.btn-export { background: #5a6268; border-color: #3d4349; }
+.btn-export:hover { background: #3d4349; }
+.config-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 0;
+    border-bottom: 1px solid #eee;
+}
+.config-row:last-child { border-bottom: none; }
+.config-name {
+    flex: 1;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#saved_configs_list { max-height: 140px; overflow-y: auto; }
+.no-configs { font-size: 11px; color: #999; }

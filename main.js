@@ -26,6 +26,7 @@ function reset() {
 	loadParameters();
 	gameEngine.entities = [];
 	gameEngine.graphs = [];
+	gameEngine.clickCapableGraphs = [];
 	lastHumanId = 0;
 	new Automata();
 	gameEngine.selection = new SelectionManager();

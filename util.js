@@ -106,11 +106,19 @@ function databaseDisconnected() {
 
 
 function loadParameters() {
-
-
-    PARAMS.initialHumans = parseInt(document.getElementById("initialHumans").value);
-    
-    
+    document.querySelectorAll('#parameters input').forEach(input => {
+        const key = input.id;
+        if (!key || !(key in PARAMS)) return;
+        if (input.type === 'checkbox') {
+            PARAMS[key] = input.checked;
+        } else {
+            const val = parseFloat(input.value);
+            if (!isNaN(val)) {
+                // Preserve integer type for params that were originally integers
+                PARAMS[key] = Number.isInteger(PARAMS[key]) ? Math.round(val) : val;
+            }
+        }
+    });
     console.log(PARAMS);
 }
 

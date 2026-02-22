@@ -6,6 +6,7 @@ class Automata {
         gameEngine.automata = this;
         gameEngine.addEntity(this);
         this.generation = 0;
+        this.totalBirths = 0;
         this.forest = new Forest();
         this.humans = [];
         this.humanById = new Map();
