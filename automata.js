@@ -55,7 +55,11 @@ class Automata {
 
         for (let i = this.humans.length - 1; i >= 0; --i) {
             if (this.humans[i].removeFromWorld) {
-                this.humanById.delete(this.humans[i].id);
+                const dying = this.humans[i];
+                for (let r = 0; r < PARAMS.numResources; r++) {
+                    gameEngine.total_lost[r] += dying.supply[r];
+                }
+                this.humanById.delete(dying.id);
                 this.humans.splice(i, 1);
             }
         }

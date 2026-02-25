@@ -39,6 +39,8 @@ class Trade {
         this.parentSide = parentSide;       // which side of THIS trade is auto-supplied by parent ('A' or 'B', null for level-1)
         this.level = parentTrade ? parentTrade.level + 1 : 1;
         this.managers = new Set();          // humans who manage this trade (via higher-level trade invocations)
+        this.invokers = new Set();          // humans who have invoked this trade (agent side only)
+        this.newManagers = [];              // managers queued for batched spreadToReachOf
         this.childTrades = [];              // trades built on top of this one
     }
 
@@ -154,9 +156,12 @@ class Trade {
                 this.trade_partners.set(key, (this.trade_partners.get(key) || 0) + 1);
             }
 
-            // Agent becomes a manager of the parent trade
+            this.invokers.add(human);
+
+            // Agent becomes a manager of the parent trade, extending its reach (spread batched)
             if (!this.parentTrade.managers.has(human)) {
                 this.parentTrade.managers.add(human);
+                this.parentTrade.newManagers.push(human);
             }
 
             this.volumeMoved[side] += amountIn;
@@ -195,12 +200,33 @@ class Trade {
     }
 
     // Check if a human is within this trade's effective reach (inventor + managers)
+    // Visibility is permanent: a region unlocked by a (now-dead) inventor or manager stays unlocked
     isWithinReach(human) {
-        if (!this.inventor?.removeFromWorld && distance(human, this.inventor) < this.inventor.socialReach) return true;
+        if (this.inventor && distance(human, this.inventor) < this.inventor.socialReach) return true;
         for (let manager of this.managers) {
-            if (!manager.removeFromWorld && distance(human, manager) < manager.socialReach) return true;
+            if (distance(human, manager) < manager.socialReach) return true;
         }
         return false;
+    }
+
+    // One pass through all humans checking all queued new managers at once.
+    // Batched and called from cleanupTrades rather than on every invocation.
+    flushNewManagers() {
+        if (this.newManagers.length === 0) return;
+        const rA = this.resourcesIn.A;
+        const rB = this.resourcesIn.B;
+        const newMgrs = this.newManagers;
+        for (let human of gameEngine.automata.humans) {
+            if (human.removeFromWorld) continue;
+            if (!newMgrs.some(m => distance(human, m) < m.socialReach)) continue;
+            if (!human.my_trades[rA][rB].some(ti => ti.trade === this)) {
+                human.my_trades[rA][rB].push({trade: this, side: 'A'});
+                if (!this.isHierarchical) {
+                    human.my_trades[rB][rA].push({trade: this, side: 'B'});
+                }
+            }
+        }
+        this.newManagers = [];
     }
 
     // Cascade deprecation downward to all child trades
@@ -254,8 +280,14 @@ class Trade {
 
     clearEscrow() {
         for (let side of ['A', 'B']) {
+            const resourceIn = this.resourcesIn[side];
             for (let request of this.requests[side]) {
-                request.human.supply[this.resourcesIn[side]] += request.quantity;
+                if (request.human.removeFromWorld) {
+                    // Human died after escrowing — log the stranded quantity as lost
+                    gameEngine.total_lost[resourceIn] += request.quantity;
+                } else {
+                    request.human.supply[resourceIn] += request.quantity;
+                }
             }
         }
         this.escrow = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);

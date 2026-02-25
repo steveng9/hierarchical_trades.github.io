@@ -10,7 +10,7 @@ var PARAMS = {
 
 
     // sim
-    updatesPerDraw: 100,
+    updatesPerDraw: 10,
     reportingPeriod: 1, // in generations
     periodic_check_interval: 500, // in ms
     show_debug_info: true,

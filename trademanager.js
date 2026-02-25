@@ -54,6 +54,9 @@ class TradeManager {
         for (let i = this.trades.length - 1; i >= 0; i--) {
             const trade = this.trades[i];
 
+            // Flush queued new managers (batched spread)
+            trade.flushNewManagers();
+
             // Clean dead managers
             trade.cleanDeadManagers();
 
@@ -76,8 +79,11 @@ class TradeManager {
                 }
             }
 
-            // Remove deprecated trades from the active list
+            // Remove deprecated trades from the active list, logging any residual supply as lost
             if (trade.deprecated) {
+                for (let r = 0; r < PARAMS.numResources; r++) {
+                    gameEngine.total_lost[r] += trade.supply[r];
+                }
                 this.trades.splice(i, 1);
             }
 

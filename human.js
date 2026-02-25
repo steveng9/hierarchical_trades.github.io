@@ -316,9 +316,25 @@ class Human {
         const child = new Human({ x: cx, y: cy, energy: childEnergy });
         child.socialReach  = mutate(this.socialReach);
         child.productivity = mutate(this.productivity);
+        child.discoverTradesAtBirth();
 
         gameEngine.automata.add_human(child);
         gameEngine.automata.totalBirths++;
+    }
+
+    discoverTradesAtBirth() {
+        for (let trade of gameEngine.automata.trademanager.trades) {
+            if (trade.deprecated) continue;
+            if (!trade.isWithinReach(this)) continue;
+            const rA = trade.resourcesIn.A;
+            const rB = trade.resourcesIn.B;
+            if (!this.my_trades[rA][rB].some(ti => ti.trade === trade)) {
+                this.my_trades[rA][rB].push({trade, side: 'A'});
+                if (!trade.isHierarchical) {
+                    this.my_trades[rB][rA].push({trade, side: 'B'});
+                }
+            }
+        }
     }
 
     humansWithinReach() {

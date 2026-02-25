@@ -41,156 +41,175 @@ class Forest {
     }
 
     drawTradeOverlay(ctx, trade) {
+        const CONNECTION_COLORS = [
+            "rgba(0, 0, 0, 0.7)",
+            "rgba(30, 100, 255, 0.7)",
+            "rgba(150, 0, 200, 0.7)",
+            "rgba(0, 180, 0, 0.7)",
+        ];
+        const ORANGE = "rgba(255, 140, 0, 0.7)";
+        const BLACK = CONNECTION_COLORS[0];
+
         ctx.save();
 
-        if (trade.isHierarchical) {
-            this.drawHierarchicalTradeOverlay(ctx, trade);
+        // Clip all overlay drawing to the forest bounds
+        ctx.beginPath();
+        ctx.rect(this.x, this.y, PARAMS.forestwidth, PARAMS.forestheight);
+        ctx.clip();
+
+        // Build ancestor chain: [selected, parent, grandparent, ..., L1]
+        const chain = [];
+        let current = trade;
+        while (current) {
+            chain.push(current);
+            if (!current.isHierarchical) break;
+            current = current.parentTrade;
+        }
+
+        // Draw reach shading beneath everything else
+        this.drawTradeReach(ctx, chain);
+
+        if (chain.length === 1) {
+            // L1 selected: draw partner pairs in black
+            this.drawTradePairs(ctx, chain[0], BLACK);
         } else {
-            this.drawLevel1TradeOverlay(ctx, trade);
+            // Draw L1 trade_pairs in orange (bottom layer)
+            this.drawTradePairs(ctx, chain[chain.length - 1], ORANGE);
+
+            // Draw connections from higher to lower, bottom-up so selected draws on top
+            for (let i = chain.length - 2; i >= 0; i--) {
+                const higherAgents = this.getTradeAgents(chain[i]);
+                const lowerAgents = this.getTradeAgents(chain[i + 1]);
+                const color = CONNECTION_COLORS[i] ?? CONNECTION_COLORS[CONNECTION_COLORS.length - 1];
+                this.drawConnectionLines(ctx, higherAgents, lowerAgents, color);
+            }
+        }
+
+        // Draw inventor markers for all trades in chain (top layer)
+        for (let t of chain) {
+            if (t.inventor && !t.inventor.removeFromWorld) {
+                this.drawInventorMarker(ctx, t.inventor);
+            }
         }
 
         ctx.restore();
     }
 
-    // Level-1: lines between trade partners (existing behavior)
-    drawLevel1TradeOverlay(ctx, trade) {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.lineWidth = 2;
-
-        for (let [key] of trade.trade_partners.entries()) {
-            const [idA, idB] = key.split("-").map(Number);
-            const h1 = gameEngine.automata.humanById.get(idA);
-            const h2 = gameEngine.automata.humanById.get(idB);
-
-            if (h1 && h2) {
-                ctx.beginPath();
-                ctx.moveTo(this.x + h1.x, this.y + h1.y);
-                ctx.lineTo(this.x + h2.x, this.y + h2.y);
-                ctx.stroke();
-            }
-        }
-
-        // Highlight inventor with a diamond
-        if (trade.inventor && !trade.inventor.removeFromWorld) {
-            this.drawInventorMarker(ctx, trade.inventor);
-        }
-
-        // If this trade has managers (via a level-2 trade), show them
-        if (trade.managers.size > 0) {
-            this.drawManagers(ctx, trade);
-        }
-    }
-
-    // Level-2+: show managers, parent trade network, and management lines
-    drawHierarchicalTradeOverlay(ctx, trade) {
-        const parentTrade = trade.parentTrade;
-
-        // 1) Draw the parent trade's partner network (faded context lines, dark outline for legibility)
-        if (parentTrade) {
-            for (let [key] of parentTrade.trade_partners.entries()) {
+    // Returns Set<Human> of live agents participating at a given trade level
+    getTradeAgents(trade) {
+        const agents = new Set();
+        if (!trade.isHierarchical) {
+            // L1: collect unique live humans from trade_partners
+            for (let key of trade.trade_partners.keys()) {
                 const [idA, idB] = key.split("-").map(Number);
                 const h1 = gameEngine.automata.humanById.get(idA);
                 const h2 = gameEngine.automata.humanById.get(idB);
-                if (!h1 || !h2) continue;
+                if (h1 && !h1.removeFromWorld) agents.add(h1);
+                if (h2 && !h2.removeFromWorld) agents.add(h2);
+            }
+        } else {
+            // L2+: agents are those who have specifically invoked this trade
+            for (let invoker of trade.invokers) {
+                if (!invoker.removeFromWorld) agents.add(invoker);
+            }
+        }
+        return agents;
+    }
 
-                // Dark outline
+    // Draw L1 partner-pair lines with dark outline + color fill
+    drawTradePairs(ctx, trade, fillColor) {
+        const isBlack = fillColor === "rgba(0, 0, 0, 0.7)";
+
+        for (let key of trade.trade_partners.keys()) {
+            const [idA, idB] = key.split("-").map(Number);
+            const h1 = gameEngine.automata.humanById.get(idA);
+            const h2 = gameEngine.automata.humanById.get(idB);
+            if (!h1 || !h2) continue;
+
+            if (!isBlack) {
                 ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(this.x + h1.x, this.y + h1.y);
                 ctx.lineTo(this.x + h2.x, this.y + h2.y);
                 ctx.stroke();
-
-                // Orange fill on top
-                ctx.strokeStyle = "rgba(255, 140, 0, 0.7)";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(this.x + h1.x, this.y + h1.y);
-                ctx.lineTo(this.x + h2.x, this.y + h2.y);
-                ctx.stroke();
             }
 
-            // Draw parent trade's inventor (orange diamond)
-            if (parentTrade.inventor && !parentTrade.inventor.removeFromWorld) {
-                this.drawMarker(ctx, parentTrade.inventor, "rgba(255, 140, 0, 1.0)", 8);
-            }
-        }
-
-        // 2) Draw this trade's own partner lines (bright blue, outlined)
-        for (let [key] of trade.trade_partners.entries()) {
-            const [idA, idB] = key.split("-").map(Number);
-            const h1 = gameEngine.automata.humanById.get(idA);
-            const h2 = gameEngine.automata.humanById.get(idB);
-            if (!h1 || !h2) continue;
-
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
-            ctx.lineWidth = 4;
+            ctx.strokeStyle = fillColor;
+            ctx.lineWidth = isBlack ? 2 : 1.5;
             ctx.beginPath();
             ctx.moveTo(this.x + h1.x, this.y + h1.y);
             ctx.lineTo(this.x + h2.x, this.y + h2.y);
             ctx.stroke();
-
-            ctx.strokeStyle = "rgba(30, 140, 255, 1.0)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(this.x + h1.x, this.y + h1.y);
-            ctx.lineTo(this.x + h2.x, this.y + h2.y);
-            ctx.stroke();
-        }
-
-        // 3) Dashed manager → parent inventor lines
-        if (parentTrade) {
-            this.drawManagers(ctx, parentTrade);
-
-            if (parentTrade.inventor && !parentTrade.inventor.removeFromWorld) {
-                const inv = parentTrade.inventor;
-                ctx.setLineDash([6, 4]);
-
-                for (let manager of parentTrade.managers) {
-                    if (manager.removeFromWorld) continue;
-
-                    ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(this.x + manager.x, this.y + manager.y);
-                    ctx.lineTo(this.x + inv.x, this.y + inv.y);
-                    ctx.stroke();
-
-                    ctx.strokeStyle = "rgba(30, 140, 255, 1.0)";
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(this.x + manager.x, this.y + manager.y);
-                    ctx.lineTo(this.x + inv.x, this.y + inv.y);
-                    ctx.stroke();
-                }
-
-                ctx.setLineDash([]);
-            }
-        }
-
-        // 4) Highlight this trade's inventor
-        if (trade.inventor && !trade.inventor.removeFromWorld) {
-            this.drawInventorMarker(ctx, trade.inventor);
         }
     }
 
-    // Draw managers as orange circles
-    drawManagers(ctx, trade) {
-        ctx.strokeStyle = "rgba(255, 140, 0, 0.8)";
-        ctx.lineWidth = 2;
+    // Draw lines from each agent in agentsA to the centroid of agentsB
+    drawConnectionLines(ctx, agentsA, agentsB, fillColor) {
+        if (agentsB.size === 0) return;
+        const isBlack = fillColor === "rgba(0, 0, 0, 0.7)";
 
-        for (let manager of trade.managers) {
-            if (manager.removeFromWorld) continue;
+        // Compute centroid of agentsB
+        let cx = 0, cy = 0;
+        for (let b of agentsB) { cx += b.x; cy += b.y; }
+        cx = this.x + cx / agentsB.size;
+        cy = this.y + cy / agentsB.size;
+
+        for (let a of agentsA) {
+            if (!isBlack) {
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x + a.x, this.y + a.y);
+                ctx.lineTo(cx, cy);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = fillColor;
+            ctx.lineWidth = isBlack ? 2 : 1.5;
             ctx.beginPath();
-            ctx.arc(this.x + manager.x, this.y + manager.y, 10, 0, 2 * Math.PI);
+            ctx.moveTo(this.x + a.x, this.y + a.y);
+            ctx.lineTo(cx, cy);
             ctx.stroke();
-
-            // Label
-            ctx.fillStyle = "rgba(255, 140, 0, 0.9)";
-            ctx.font = "10px monospace";
-            ctx.textBaseline = "bottom";
-            ctx.fillText("mgr", this.x + manager.x + 12, this.y + manager.y - 2);
         }
+    }
+
+    // Shade the geographic reach of the selected trade.
+    // Visibility is permanent: a region unlocked by a (now-dead) inventor or manager stays unlocked.
+    drawTradeReach(ctx, chain) {
+        const selected = chain[0];
+        if (!selected.inventor) return;
+
+        // Draw full reach union (inventor + all ever-added managers) in light gold.
+        // No removeFromWorld filter — dead inventors/managers still define permanent visibility.
+        const offscreen = document.createElement('canvas');
+        offscreen.width = ctx.canvas.width;
+        offscreen.height = ctx.canvas.height;
+        const octx = offscreen.getContext('2d');
+
+        octx.fillStyle = 'rgba(255, 220, 80, 1)';
+        octx.beginPath();
+        octx.arc(this.x + selected.inventor.x, this.y + selected.inventor.y, selected.inventor.socialReach, 0, 2 * Math.PI);
+        octx.fill();
+        for (let manager of selected.managers) {
+            octx.beginPath();
+            octx.arc(this.x + manager.x, this.y + manager.y, manager.socialReach, 0, 2 * Math.PI);
+            octx.fill();
+        }
+
+        ctx.globalAlpha = 0.25;
+        ctx.drawImage(offscreen, 0, 0);
+        ctx.globalAlpha = 1.0;
+
+        // Dashed ring on the inventor's original circle — anything outside this ring
+        // is manager-extended visibility
+        ctx.strokeStyle = 'rgba(255, 120, 0, 0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(this.x + selected.inventor.x, this.y + selected.inventor.y, selected.inventor.socialReach, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
     }
 
     // Draw inventor as a diamond marker

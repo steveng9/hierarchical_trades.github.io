@@ -104,12 +104,15 @@ class TradeDataView {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // If a hierarchical trade is selected, highlight its nearest L1 ancestor in the upper table
-        let selectedL1Parent = this.selectedTrade;
-        while (selectedL1Parent && selectedL1Parent.level > 1) {
-            selectedL1Parent = selectedL1Parent.parentTrade;
+        // Build sets of ancestor and descendant trades for orange highlighting
+        const relatedTrades = new Set();
+        let ancestor = this.selectedTrade?.parentTrade;
+        while (ancestor) { relatedTrades.add(ancestor); ancestor = ancestor.parentTrade; }
+        const descQueue = [...(this.selectedTrade?.childTrades ?? [])];
+        while (descQueue.length > 0) {
+            const d = descQueue.shift();
+            if (!d.deprecated) { relatedTrades.add(d); descQueue.push(...d.childTrades); }
         }
-        if (selectedL1Parent === this.selectedTrade) selectedL1Parent = null;
 
         // Build display slice — pin selected L1 trade into view if it's outside the top rows
         let displayTrades = this.sortedTrades.slice(0, this.maxRows);
@@ -129,7 +132,7 @@ class TradeDataView {
             if (this.selectedTrade === trade) {
                 ctx.fillStyle = "rgba(200, 200, 0, 0.25)";
                 ctx.fillRect(px + 3, rowY - 2, pw - 6, this.lineHeight);
-            } else if (selectedL1Parent === trade) {
+            } else if (relatedTrades.has(trade)) {
                 ctx.fillStyle = "rgba(255, 140, 0, 0.2)";
                 ctx.fillRect(px + 3, rowY - 2, pw - 6, this.lineHeight);
             }
@@ -241,6 +244,9 @@ class TradeDataView {
 
                 if (this.selectedTrade === trade) {
                     ctx.fillStyle = "rgba(200, 200, 0, 0.25)";
+                    ctx.fillRect(px + 3, rowY - 2, pw - 6, this.hierLineHeight);
+                } else if (relatedTrades.has(trade)) {
+                    ctx.fillStyle = "rgba(255, 140, 0, 0.2)";
                     ctx.fillRect(px + 3, rowY - 2, pw - 6, this.hierLineHeight);
                 }
 

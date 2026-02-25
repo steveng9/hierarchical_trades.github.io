@@ -65,6 +65,7 @@ class GameEngine {
         // Verify sim elements are correct
         this.total_produced = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
         this.total_consumed = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+        this.total_lost = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
         this.total_existing_actual = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
         this.total_existing_expected = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
     }
@@ -92,14 +93,14 @@ class GameEngine {
     }
     draw() {
         if (this.automata.generation % PARAMS.reportingPeriod === 0) {
-            // Clear forest area
-            this.ctx.clearRect(PARAMS.margin, PARAMS.margin, PARAMS.forestwidth, PARAMS.forestheight);
+            // Clear forest area plus all surrounding margins so nothing persists outside the forest
+            const panelsY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
+            this.ctx.clearRect(0, 0, this.surfaceWidth, panelsY);
             for (var i = 0; i < this.entities.length; i++) {
                 this.entities[i].draw(this.ctx);
             }
 
             // Clear panels area (full width below forest)
-            const panelsY = PARAMS.margin + PARAMS.forestheight + PARAMS.margin;
             this.ctx.clearRect(0, panelsY, this.ctx.canvas.width, this.ctx.canvas.height - panelsY);
             for (var i = 0; i < this.graphs.length; i++) {
                 this.graphs[i].draw(this.ctx);
@@ -149,7 +150,7 @@ class GameEngine {
                     this.lastSecond = now;
 
                     for (let r = 0; r < (PARAMS.numResources); r++) {
-                        this.total_existing_actual[r] = this.automata.sum_all_resources(r);
+                        this.total_existing_actual[r] = this.automata.sum_all_resources(r) + this.total_lost[r];
                         this.total_existing_expected[r] = this.total_produced[r] - this.total_consumed[r];
                     }
                 }

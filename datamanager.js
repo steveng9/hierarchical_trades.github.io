@@ -30,6 +30,9 @@ class DataManager {
             "by level": Object.entries(gameEngine.automata.trademanager.totalTradesByLevel).map(([k, v]) => `L${k}:${v}`).join(' ') || '--',
             "total R": gameEngine.total_existing_actual[0].toFixed(2),
             "expected R": gameEngine.total_existing_expected[0].toFixed(2),
+            "produced R": gameEngine.total_produced[0].toFixed(2),
+            "consumed R": gameEngine.total_consumed[0].toFixed(2),
+            "lost R": gameEngine.total_lost[0].toFixed(2),
         })));
 
         // Right column: TradeDataView + SelectionDataView

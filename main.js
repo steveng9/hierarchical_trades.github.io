@@ -27,6 +27,11 @@ function reset() {
 	gameEngine.entities = [];
 	gameEngine.graphs = [];
 	gameEngine.clickCapableGraphs = [];
+	gameEngine.total_produced = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+	gameEngine.total_consumed = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+	gameEngine.total_lost    = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+	gameEngine.total_existing_actual   = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
+	gameEngine.total_existing_expected = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
 	lastHumanId = 0;
 	new Automata();
 	gameEngine.selection = new SelectionManager();
