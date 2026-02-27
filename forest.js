@@ -13,31 +13,90 @@ class Forest {
         this.rows = Math.ceil(PARAMS.forestheight / PARAMS.cellSize);
         this.grid = [];
         this.selectedTrade = null;
+        this.tradeDisplayLevel = 0;  // 0 = off, N = show all level-N trades
 
         this.setConcentration();
         // this.setConcentrationRandomResource();
         // this.setConcentrationStripes();
+
+        // Deep-copy grid as the baseline for regeneration
+        this.baseGrid = this.grid.map(row => row.map(cell => [...cell]));
 
         console.log(this)
 
     }
 
 
-    update() {  
+    update() {
+        if (!PARAMS.resourceDepletion) return;
+        const rate = PARAMS.resourceRegenRate;
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                const cell = this.grid[i][j];
+                const base = this.baseGrid[i][j];
+                for (let r = 0; r < PARAMS.numResources; r++) {
+                    if (cell[r] < base[r]) {
+                        cell[r] = Math.min(cell[r] + rate, base[r]);
+                    }
+                }
+            }
+        }
+    }
 
+    depleteCell(x, y, resourceIndex, amount) {
+        const col = Math.floor(x / PARAMS.cellSize);
+        const row = Math.floor(y / PARAMS.cellSize);
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
+        this.grid[row][col][resourceIndex] = Math.max(0, this.grid[row][col][resourceIndex] - amount * PARAMS.resourceDepletionRate);
     }
 
   
     draw(ctx) {
         this.renderCells(ctx);
 
-        if (this.selectedTrade) {
+        if (this.tradeDisplayLevel > 0) {
+            this.drawLevelOverlay(ctx);
+        } else if (this.selectedTrade) {
             this.drawTradeOverlay(ctx, this.selectedTrade);
         }
     }
 
     selectTrade(trade) {
         this.selectedTrade = trade;
+        this.tradeDisplayLevel = 0;
+        const btn = document.getElementById('levelDisplayBtn');
+        if (btn) btn.textContent = 'Level Display: OFF';
+    }
+
+    // Draw all trades at tradeDisplayLevel using existing line-drawing helpers
+    drawLevelOverlay(ctx) {
+        const level = this.tradeDisplayLevel;
+        const CONNECTION_COLORS = [
+            "rgba(0, 0, 0, 0.7)",
+            "rgba(30, 100, 255, 0.7)",
+            "rgba(150, 0, 200, 0.7)",
+            "rgba(0, 180, 0, 0.7)",
+        ];
+        const color = CONNECTION_COLORS[Math.min(level - 1, CONNECTION_COLORS.length - 1)];
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(this.x, this.y, PARAMS.forestwidth, PARAMS.forestheight);
+        ctx.clip();
+
+        for (let trade of gameEngine.automata.trademanager.trades) {
+            if (trade.level !== level || trade.deprecated) continue;
+            if (level === 1) {
+                this.drawTradePairs(ctx, trade, "rgba(0, 0, 0, 0.7)");
+            } else {
+                const higherAgents = this.getTradeAgents(trade);
+                if (higherAgents.size === 0) continue;
+                const lowerAgents = this.getTradeAgents(trade.parentTrade);
+                this.drawConnectionLines(ctx, higherAgents, lowerAgents, color);
+            }
+        }
+
+        ctx.restore();
     }
 
     drawTradeOverlay(ctx, trade) {
@@ -95,36 +154,63 @@ class Forest {
         ctx.restore();
     }
 
-    // Returns Set<Human> of live agents participating at a given trade level
+    // Returns Map<Human, alpha> of live agents participating at a given trade level.
+    // Stale entries (alpha <= 0) are pruned from the trade's tracking map.
     getTradeAgents(trade) {
-        const agents = new Set();
+        const FADE_TICKS = 1000;
+        const currentTick = gameEngine.automata.generation;
+        const agents = new Map();
+
         if (!trade.isHierarchical) {
-            // L1: collect unique live humans from trade_partners
-            for (let key of trade.trade_partners.keys()) {
+            // L1: collect unique live humans from trade_partners; take max alpha per human
+            const toDelete = [];
+            for (let [key, lastTick] of trade.trade_partners) {
+                const alpha = Math.max(0, 1 - (currentTick - lastTick) / FADE_TICKS);
+                if (alpha <= 0) { toDelete.push(key); continue; }
                 const [idA, idB] = key.split("-").map(Number);
                 const h1 = gameEngine.automata.humanById.get(idA);
                 const h2 = gameEngine.automata.humanById.get(idB);
-                if (h1 && !h1.removeFromWorld) agents.add(h1);
-                if (h2 && !h2.removeFromWorld) agents.add(h2);
+                if (h1 && !h1.removeFromWorld) agents.set(h1, Math.max(agents.get(h1) || 0, alpha));
+                if (h2 && !h2.removeFromWorld) agents.set(h2, Math.max(agents.get(h2) || 0, alpha));
             }
+            for (let key of toDelete) trade.trade_partners.delete(key);
         } else {
             // L2+: agents are those who have specifically invoked this trade
-            for (let invoker of trade.invokers) {
-                if (!invoker.removeFromWorld) agents.add(invoker);
+            const toDelete = [];
+            for (let [invoker, lastTick] of trade.invokers) {
+                if (invoker.removeFromWorld) { toDelete.push(invoker); continue; }
+                const alpha = Math.max(0, 1 - (currentTick - lastTick) / FADE_TICKS);
+                if (alpha <= 0) { toDelete.push(invoker); continue; }
+                agents.set(invoker, alpha);
             }
+            for (let invoker of toDelete) trade.invokers.delete(invoker);
         }
+
         return agents;
     }
 
-    // Draw L1 partner-pair lines with dark outline + color fill
+    // Draw L1 partner-pair lines, fading from fresh (alpha=1) to invisible over FADE_TICKS
     drawTradePairs(ctx, trade, fillColor) {
         const isBlack = fillColor === "rgba(0, 0, 0, 0.7)";
+        const FADE_TICKS = 1000;
+        const currentTick = gameEngine.automata.generation;
+        const toDelete = [];
 
-        for (let key of trade.trade_partners.keys()) {
+        for (let [key, lastTick] of trade.trade_partners) {
+            const age = currentTick - lastTick;
+            const alpha = Math.max(0, 1 - age / FADE_TICKS);
+
+            if (alpha <= 0) {
+                toDelete.push(key);
+                continue;
+            }
+
             const [idA, idB] = key.split("-").map(Number);
             const h1 = gameEngine.automata.humanById.get(idA);
             const h2 = gameEngine.automata.humanById.get(idB);
             if (!h1 || !h2) continue;
+
+            ctx.globalAlpha = alpha;
 
             if (!isBlack) {
                 ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
@@ -142,20 +228,26 @@ class Forest {
             ctx.lineTo(this.x + h2.x, this.y + h2.y);
             ctx.stroke();
         }
+
+        ctx.globalAlpha = 1;
+        for (let key of toDelete) trade.trade_partners.delete(key);
     }
 
-    // Draw lines from each agent in agentsA to the centroid of agentsB
+    // Draw lines from each agent in agentsA to the centroid of agentsB.
+    // Both are Map<Human, alpha>; alpha controls per-line opacity for agentsA.
     drawConnectionLines(ctx, agentsA, agentsB, fillColor) {
         if (agentsB.size === 0) return;
         const isBlack = fillColor === "rgba(0, 0, 0, 0.7)";
 
-        // Compute centroid of agentsB
+        // Compute centroid of agentsB (position only, alpha not needed)
         let cx = 0, cy = 0;
-        for (let b of agentsB) { cx += b.x; cy += b.y; }
+        for (let b of agentsB.keys()) { cx += b.x; cy += b.y; }
         cx = this.x + cx / agentsB.size;
         cy = this.y + cy / agentsB.size;
 
-        for (let a of agentsA) {
+        for (let [a, alpha] of agentsA) {
+            ctx.globalAlpha = alpha;
+
             if (!isBlack) {
                 ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
                 ctx.lineWidth = 3;
@@ -172,6 +264,7 @@ class Forest {
             ctx.lineTo(cx, cy);
             ctx.stroke();
         }
+        ctx.globalAlpha = 1;
     }
 
     // Shade the geographic reach of the selected trade.

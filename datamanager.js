@@ -19,7 +19,7 @@ class DataManager {
         gameEngine.clickCapableGraphs.push(hdv);
         this.humanDataView = hdv;
 
-        gameEngine.addGraph(new VariableViewer(leftX, belowForestY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
+        const varViewer = new VariableViewer(leftX, belowForestY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
             "generation": this.automata.generation,
             "sim speed (gen/s)": gameEngine.updatesPerSecond.toFixed(0),
             "num humans": this.automata.humans.length,
@@ -33,14 +33,24 @@ class DataManager {
             "produced R": gameEngine.total_produced[0].toFixed(2),
             "consumed R": gameEngine.total_consumed[0].toFixed(2),
             "lost R": gameEngine.total_lost[0].toFixed(2),
-        })));
+        }));
+        gameEngine.addGraph(varViewer);
 
-        // Right column: TradeDataView + SelectionDataView
+        // Right column: TradeDataView + SelectionDataView (created before TradeFlowView
+        // so TradeFlowView can read SelectionDataView's live height to avoid overlap)
         const tdv = new TradeDataView(rightX, belowForestY);
         gameEngine.clickCapableGraphs.push(tdv);
         this.tradeDataView = tdv;
 
-        gameEngine.addGraph(new SelectionDataView(rightX, belowForestY + tdv.panelHeight + PARAMS.margin, this));
+        const sdv = new SelectionDataView(rightX, belowForestY + tdv.panelHeight + PARAMS.margin, this);
+        gameEngine.addGraph(sdv);
+
+        // Flow view: y is computed dynamically each draw to stay below both columns
+        const tfv = new TradeFlowView(PARAMS.margin, varViewer, sdv);
+        gameEngine.addGraph(tfv);
+
+        // Stats graphs: 8 time-series panels below the flow view
+        gameEngine.addGraph(new StatsPanel(tfv));
     }
 
     updateData() {

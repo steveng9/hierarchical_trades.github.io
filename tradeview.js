@@ -62,6 +62,8 @@ class TradeDataView {
         const pw = this.panelWidth;
 
         ctx.save();
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
 
         // Panel background
         ctx.strokeStyle = "#000";

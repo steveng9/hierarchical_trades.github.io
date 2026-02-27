@@ -21,6 +21,8 @@
     <script type="text/javascript" src="./trade.js"></script>
     <script type="text/javascript" src="./trademanager.js"></script>
     <script type="text/javascript" src="./forest.js"></script>
+    <script type="text/javascript" src="./tradeflowview.js"></script>
+    <script type="text/javascript" src="./statspanel.js"></script>
     <script type="text/javascript" src="./datamanager.js"></script>
     <script type="text/javascript" src="./selectionmanager.js"></script>
     <script type="text/javascript" src="./selectionview.js"></script>
@@ -28,7 +30,7 @@
     <script type="text/javascript" src="./main.js"></script>
 </head>
 <body>
-    <canvas id="gameWorld" width="1260" height="1900"></canvas>
+    <canvas id="gameWorld" width="1260" height="2600"></canvas>
     <div id="controlPanel">
         <div id="db" class="db-status">Database</div>
 
@@ -73,6 +75,22 @@
                                oninput="document.getElementById('initialHumans_val').textContent=this.value">
                         <span class="param-val" id="initialHumans_val"></span>
                     </div>
+                    <div class="check-row">
+                        <input type="checkbox" id="resourceDepletion">
+                        <span>Resource depletion</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Depletion rate</span>
+                        <input type="range" id="resourceDepletionRate" min="0.01" max="0.5" step="0.01"
+                               oninput="document.getElementById('resourceDepletionRate_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="resourceDepletionRate_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Regen rate</span>
+                        <input type="range" id="resourceRegenRate" min="0.0001" max="0.005" step="0.0001"
+                               oninput="document.getElementById('resourceRegenRate_val').textContent=parseFloat(this.value).toFixed(4)">
+                        <span class="param-val" id="resourceRegenRate_val"></span>
+                    </div>
                 </div>
 
                 <div class="parameter-section">
@@ -112,6 +130,12 @@
                         <input type="range" id="reproductionMutationRate" min="0" max="0.5" step="0.01"
                                oninput="document.getElementById('reproductionMutationRate_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="reproductionMutationRate_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Social reach mult.</span>
+                        <input type="range" id="social_reach_multiplier" min="0.01" max="2" step="0.01"
+                               oninput="document.getElementById('social_reach_multiplier_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="social_reach_multiplier_val"></span>
                     </div>
                 </div>
             </div>
@@ -211,6 +235,7 @@
         <button type="button" onclick="pause()">Pause / Play (Space)</button>
         <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
         <button type="button" onclick="clearHumanSelection()">Clear Selection</button>
+        <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
 
         <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
             <span style="font-size:12px;">Find human:</span>

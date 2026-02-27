@@ -22,6 +22,7 @@ if (window.io !== undefined) {
 }
 
 function reset() {
+    const savedDisplayLevel = gameEngine.automata?.forest?.tradeDisplayLevel ?? 0;
     isRunning = true;
 	loadParameters();
 	gameEngine.entities = [];
@@ -32,8 +33,10 @@ function reset() {
 	gameEngine.total_lost    = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
 	gameEngine.total_existing_actual   = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
 	gameEngine.total_existing_expected = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(0);
-	lastHumanId = 0;
+	Human.lastHumanId = 0;
+	Trade.lastTradeId = 0;
 	new Automata();
+	gameEngine.automata.forest.tradeDisplayLevel = savedDisplayLevel;
 	gameEngine.selection = new SelectionManager();
 };
 
@@ -49,6 +52,20 @@ function toggleSocialReach() {
 
 function clearHumanSelection() {
     gameEngine.automata.datamanager.humanDataView.clearSelection();
+}
+
+function cycleTradeLevel() {
+    const forest = gameEngine.automata.forest;
+    const trades = gameEngine.automata.trademanager.trades;
+    const maxLevel = trades.reduce((m, t) => t.deprecated ? m : Math.max(m, t.level), 0);
+
+    forest.tradeDisplayLevel = forest.tradeDisplayLevel >= maxLevel ? 0 : forest.tradeDisplayLevel + 1;
+    forest.selectedTrade = null;
+
+    const btn = document.getElementById('levelDisplayBtn');
+    btn.textContent = forest.tradeDisplayLevel === 0
+        ? 'Level Display: OFF'
+        : `Level Display: L${forest.tradeDisplayLevel}`;
 }
 
 

@@ -1,5 +1,5 @@
 class Graph {
-    constructor(x, y, data, label, sublabels = [], horizantal_lines = []) {
+    constructor(x, y, data, label, sublabels = [], horizantal_lines = [], xSize = 1160, ySize = 115) {
 //        this.game = game;
         this.x = x;
         this.y = y;
@@ -7,8 +7,8 @@ class Graph {
         this.label = label;
         this.sublabels = sublabels;
 
-        this.xSize = 1160;
-        this.ySize = 115;
+        this.xSize = xSize;
+        this.ySize = ySize;
         this.ctx = gameEngine.ctx;
         this.colors = ["#00BB00", "#BB0000", "#00BBBB", "#CCCCCC"];
         this.maxVal = 0;
@@ -18,6 +18,7 @@ class Graph {
     update() {
     }
     draw(ctx) {
+        this.ctx.save();
         this.updateMax();
         // if (!document.getElementById("graphs").checked) return;
         if (this.data[0].length > 1) {
@@ -116,9 +117,10 @@ class Graph {
             this.ctx.font = "12px Arial"; // Set font size and style
             this.ctx.fillText(label, this.x + 5, Math.max(yCanvas - 5, this.y + 5)); // Adjust label position above the line, within bounds
         });
+        this.ctx.restore();
     }
     updateMax() {
-        this.maxVal = Math.max(...[].concat(...this.data));
+        this.maxVal = Math.max(1, ...([].concat(...this.data)));
     }
 }
 

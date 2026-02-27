@@ -7,7 +7,7 @@ class Human {
             energy: PARAMS.initialEnergy,
             x: randomInt(PARAMS.forestwidth),
             y: randomInt(PARAMS.forestheight),
-            reach: sampleRightSkew(.01) * .5,
+            reach: sampleRightSkew(.01) * PARAMS.social_reach_multiplier,
             isSpawning: false
         };
 
@@ -24,7 +24,7 @@ class Human {
         this.age = 0;
         this.maxAge = generateNormalSample(PARAMS.maxHumanAge, PARAMS.maxHumanAge / 20);
         this.socialReach = reach;
-        this.productivity = randomFloat(0, 1.2);
+        this.productivity = randomFloat(0, PARAMS.production_max);
         this.num_trades_built = 0;
         this.trades_built = Array.from({ length: PARAMS.numResources }, () =>
             Array.from({ length: PARAMS.numResources }, () => null)
@@ -43,6 +43,8 @@ class Human {
         this.resource_valuations = Array(PARAMS.numResources + PARAMS.numAlternativeResources).fill(1);
         this.volumeTradedFor = Array(PARAMS.numResources).fill(0);
         this.totalRoyalties = Array(PARAMS.numResources).fill(0);
+        this.tradeInvocations = Array(PARAMS.numResources).fill(0);  // times resource r received via trade
+        this.productionTicks  = Array(PARAMS.numResources).fill(0);  // times resource r produced directly
     }
 
     update() {
@@ -111,6 +113,10 @@ class Human {
             const produced = generateNormalSample(this.productivity * Math.pow(resourceConcentration, 3), resourceConcentration * .1);
             this.supply[r] += produced;
             gameEngine.total_produced[r] += produced;
+            if (produced > 0) this.productionTicks[r]++;
+            if (PARAMS.resourceDepletion) {
+                this.forest.depleteCell(this.x, this.y, r, produced);
+            }
         }
         this.spendEnergy(PARAMS.workEnergyCost);
     }
@@ -412,6 +418,7 @@ class Human {
                         sumTradesAttempted += 1;
                         let traded = trade.invoke(this, side, amountInAttempted);
                         sumTradesAccepted += traded;
+                        if (traded > 0) this.tradeInvocations[rOut]++;
                     }
                 }
             }

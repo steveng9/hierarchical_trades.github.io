@@ -67,6 +67,7 @@ class SelectionManager {
     finishSpawn(x, y) {
         if (!this.isSpawning && !this.tempHuman) return;
         this.tempHuman.isSpawning = false;
+        this.tempHuman.discoverTradesAtBirth();
         this.start = null;
         this.end = null;
         this.isSpawning = false;

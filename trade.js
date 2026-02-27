@@ -39,7 +39,7 @@ class Trade {
         this.parentSide = parentSide;       // which side of THIS trade is auto-supplied by parent ('A' or 'B', null for level-1)
         this.level = parentTrade ? parentTrade.level + 1 : 1;
         this.managers = new Set();          // humans who manage this trade (via higher-level trade invocations)
-        this.invokers = new Set();          // humans who have invoked this trade (agent side only)
+        this.invokers = new Map();          // human -> last-invoked tick (agent side only)
         this.newManagers = [];              // managers queued for batched spreadToReachOf
         this.childTrades = [];              // trades built on top of this one
     }
@@ -68,9 +68,10 @@ class Trade {
         const resourceOut = this.resourceInOppositeSide(side);
         const resourceIn = this.resourcesIn[side];
         const desiredOut = quantity / this.XinXout[side];
+        if (this.escrow[resourceOut] < 0) this.escrow[resourceOut] = 0; // clamp floating-point drift
         const availableOut = this.escrow[resourceOut] / this.YinXout[side];
         const fulfilledOut = Math.min(availableOut, desiredOut);
-        assert(fulfilledOut >= 0 - Number.EPSILON * 10, `fulfilledOut should be >= 0: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
+        assert(fulfilledOut >= 0, `fulfilledOut should be >= 0: desired: ${desiredOut}, escrow: ${this.escrow[resourceOut]}, available: ${availableOut}`);
         const amountIn = fulfilledOut * this.XinXout[side];
 
         if (this.escrow[resourceOut] > 0) {
@@ -86,8 +87,8 @@ class Trade {
             this.escrow[resourceOut] -= amountInOpposite;
             const trade_partners = this.fulfillRequest(amountInOpposite, opposite_side(side));
             trade_partners.forEach(partner => {
-                const key = `${human.id}-${partner.id}`;
-                this.trade_partners.set(key, (this.trade_partners.get(key) || 0) + 1);
+                const key = [human.id, partner.id].sort((a, b) => a - b).join("-");
+                this.trade_partners.set(key, gameEngine.automata.generation);
             });
 
             // Surplus
@@ -152,11 +153,11 @@ class Trade {
 
             // Track trade partners (human <-> parent trade's inventor, if alive)
             if (this.parentTrade.inventor && !this.parentTrade.inventor.removeFromWorld) {
-                const key = `${human.id}-${this.parentTrade.inventor.id}`;
-                this.trade_partners.set(key, (this.trade_partners.get(key) || 0) + 1);
+                const key = [human.id, this.parentTrade.inventor.id].sort((a, b) => a - b).join("-");
+                this.trade_partners.set(key, gameEngine.automata.generation);
             }
 
-            this.invokers.add(human);
+            this.invokers.set(human, gameEngine.automata.generation);
 
             // Agent becomes a manager of the parent trade, extending its reach (spread batched)
             if (!this.parentTrade.managers.has(human)) {
@@ -253,6 +254,7 @@ class Trade {
         let amountFulfilledTotal = 0;
 
         while (amountFulfilledTotal < amountNeededTotal - Number.EPSILON * 10) {
+            if (requests.length === 0) break; // floating-point residual: escrow drifted above zero with no remaining requests
             const request = requests[0];
             const requestingHuman = request.human;
             trade_partners.push(requestingHuman);
