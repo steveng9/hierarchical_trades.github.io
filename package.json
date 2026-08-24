@@ -1,0 +1,19 @@
+{
+  "name": "hierarchical-trades",
+  "version": "1.0.0",
+  "description": "Agent-based simulation of emergent institutional hierarchy in trade networks",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test 'test/*.test.js'",
+    "test:golden": "node --test test/golden.test.js",
+    "serve": "python3 -m http.server 8000",
+    "sim": "node src/experiment/cli.js",
+    "scenarios": "node src/experiment/cli.js scenarios",
+    "mechanics": "node src/experiment/cli.js mechanics",
+    "test:slow": "RUN_SLOW=1 node --test 'test/*.test.js'"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
