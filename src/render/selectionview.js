@@ -1,4 +1,6 @@
-class SelectionDataView {
+import {PARAMS} from '../browser/context.js';
+
+export class SelectionDataView {
     constructor(x, y, dataManager) {
         this.x = x;
         this.y = y;

@@ -1,7 +1,10 @@
+import {PARAMS, gameEngine, isRunning} from '../browser/context.js';
+import {Graph} from './graph.js';
+
 
 // StatsPanel: 8 time-series graphs displayed in a 2-column × 4-row grid,
 // positioned dynamically below the TradeFlowView panel.
-class StatsPanel {
+export class StatsPanel {
     constructor(tradeFlowView) {
         this.tradeFlowView = tradeFlowView;
 
@@ -67,7 +70,7 @@ class StatsPanel {
         // --- Avg energy: laborers vs producers ---
         let lSum = 0, lCnt = 0, pSum = 0, pCnt = 0;
         for (const h of humans) {
-            const e = h.total_energy();
+            const e = h.totalEnergy();
             if (h.is_laborer) { lSum += e; lCnt++; }
             else               { pSum += e; pCnt++; }
         }
@@ -122,7 +125,7 @@ class StatsPanel {
         this._lastTotalByLvl.l2p = l2pNow;
 
         // --- Total energy across all humans ---
-        this._d.totalEnergy[0].push(humans.reduce((s, h) => s + h.total_energy(), 0));
+        this._d.totalEnergy[0].push(humans.reduce((s, h) => s + h.totalEnergy(), 0));
     }
 
     update() {}

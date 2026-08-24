@@ -5,29 +5,7 @@
     <meta charset="utf-8">
     <title>Population Genetics Simulator</title>
     <link rel="stylesheet" type="text/css" href="./style.css"></link>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.js"></script>
-    <script type="text/javascript" src="./assetmanager.js"></script>
-    <script type="text/javascript" src="./histogram.js"></script>
-    <script type="text/javascript" src="./graph.js"></script>
-    <script type="text/javascript" src="./variablehistogramviewer.js"></script>
-    <script type="text/javascript" src="./variableviewer.js"></script>
-    <script type="text/javascript" src="./humandataview.js"></script>
-    <script type="text/javascript" src="./gameengine.js"></script>
-    <script type="text/javascript" src="./util.js"></script>
-    <script type="text/javascript" src="./params.js"></script>
-    <script type="text/javascript" src="./gene.js"></script>
-    <script type="text/javascript" src="./automata.js"></script>
-    <script type="text/javascript" src="./human.js"></script>
-    <script type="text/javascript" src="./trade.js"></script>
-    <script type="text/javascript" src="./trademanager.js"></script>
-    <script type="text/javascript" src="./forest.js"></script>
-    <script type="text/javascript" src="./tradeflowview.js"></script>
-    <script type="text/javascript" src="./statspanel.js"></script>
-    <script type="text/javascript" src="./datamanager.js"></script>
-    <script type="text/javascript" src="./selectionmanager.js"></script>
-    <script type="text/javascript" src="./selectionview.js"></script>
-    <script type="text/javascript" src="./tradeview.js"></script>
-    <script type="text/javascript" src="./main.js"></script>
+    <script type="module" src="./src/browser/main.js"></script>
 </head>
 <body>
     <canvas id="gameWorld" width="1260" height="2600"></canvas>
@@ -53,7 +31,7 @@
                     <h3>Forest</h3>
                     <div class="param-row">
                         <span class="param-label">Num resources</span>
-                        <input type="range" id="numResources" min="2" max="5" step="1"
+                        <input type="range" id="numResources" min="1" max="3" step="1" value="3"
                                oninput="document.getElementById('numResources_val').textContent=this.value">
                         <span class="param-val" id="numResources_val"></span>
                     </div>

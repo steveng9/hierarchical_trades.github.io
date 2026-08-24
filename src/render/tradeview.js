@@ -1,4 +1,6 @@
-class TradeDataView {
+import {PARAMS, gameEngine} from '../browser/context.js';
+
+export class TradeDataView {
     constructor(x, y) {
         this.x = x;
         this.y = y;

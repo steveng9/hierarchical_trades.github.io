@@ -1,5 +1,7 @@
+import {PARAMS, gameEngine, isRunning} from '../browser/context.js';
 
-class TradeFlowView {
+
+export class TradeFlowView {
     constructor(x, varViewer, selectionView) {
         this.x = x;
         this.varViewer = varViewer;

@@ -1,4 +1,6 @@
-class VariableHistogramViewer {
+import {gameEngine} from '../browser/context.js';
+
+export class VariableHistogramViewer {
     constructor(x, y, label) {
 //        this.game = game;
         this.x = x;

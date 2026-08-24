@@ -1,4 +1,6 @@
-class Graph {
+import {PARAMS, gameEngine} from '../browser/context.js';
+
+export class Graph {
     constructor(x, y, data, label, sublabels = [], horizantal_lines = [], xSize = 1160, ySize = 115) {
 //        this.game = game;
         this.x = x;

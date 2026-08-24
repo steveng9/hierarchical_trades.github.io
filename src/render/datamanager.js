@@ -1,4 +1,19 @@
-class DataManager {
+/**
+ * Panel layout and aggregate view state.
+ *
+ * Owns the arrangement of every UI panel and the small aggregates they read. Construction
+ * order matters: TradeFlowView reads SelectionDataView's live height to position itself, so
+ * the selection panel must exist first.
+ */
+import {PARAMS, gameEngine} from '../browser/context.js';
+import {HumanDataView} from './humandataview.js';
+import {VariableViewer} from './variableviewer.js';
+import {TradeDataView} from './tradeview.js';
+import {SelectionDataView} from './selectionview.js';
+import {TradeFlowView} from './tradeflowview.js';
+import {StatsPanel} from './statspanel.js';
+
+export class DataManager {
     constructor(automata) {
         this.automata = automata;
         this.vis_graph_frequency = 10;
@@ -20,7 +35,7 @@ class DataManager {
         this.humanDataView = hdv;
 
         const varViewer = new VariableViewer(leftX, belowForestY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
-            "generation": this.automata.generation,
+            "generation": gameEngine.automata.generation,
             "sim speed (gen/s)": gameEngine.updatesPerSecond.toFixed(0),
             "num humans": this.automata.humans.length,
             "births": this.automata.totalBirths,
@@ -81,7 +96,7 @@ class DataManager {
     logData() {}
 
     update() {
-        if (this.automata.generation % PARAMS.reportingPeriod === 0) this.updateData();
+        if (gameEngine.automata.generation % PARAMS.reportingPeriod === 0) this.updateData();
     }
 
     draw(ctx) {}

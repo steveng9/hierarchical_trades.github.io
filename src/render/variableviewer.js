@@ -1,4 +1,6 @@
-class VariableViewer {
+import {PARAMS} from '../browser/context.js';
+
+export class VariableViewer {
     constructor(x, y, label, variableGetter) {
         this.x = x;
         this.y = y;

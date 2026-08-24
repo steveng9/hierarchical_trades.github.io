@@ -1,56 +1,31 @@
-class Forest {
+/**
+ * Forest rendering: cell colouring and every trade overlay.
+ *
+ * Split out of the old `Forest`, which mixed grid state with ~250 lines of canvas drawing.
+ * The kernel's `Forest` is now pure state; this reads it and never mutates it.
+ *
+ * View-only state — which trade is selected, which level is being displayed — lives here
+ * rather than on the model, so a headless run carries none of it.
+ */
+import {PARAMS, gameEngine} from '../browser/context.js';
+import {distance} from '../core/mathutil.js';
 
-    
-    constructor() {
-        assert(PARAMS.numResources > 0 && PARAMS.numResources <= 3, "numResources must be 1, 2, or 3");
-
-        this.seeds = Array.from({length: PARAMS.numResources}, () => Math.random() * 40);
-
+export class ForestView {
+    /** @param {import('../core/forest.js').Forest} forest */
+    constructor(forest) {
+        this.forest = forest;
         this.x = PARAMS.margin;
         this.y = PARAMS.margin;
-        // Number of cells horizontally/vertically
-        this.cols = Math.ceil(PARAMS.forestwidth / PARAMS.cellSize);
-        this.rows = Math.ceil(PARAMS.forestheight / PARAMS.cellSize);
-        this.grid = [];
         this.selectedTrade = null;
-        this.tradeDisplayLevel = 0;  // 0 = off, N = show all level-N trades
-
-        this.setConcentration();
-        // this.setConcentrationRandomResource();
-        // this.setConcentrationStripes();
-
-        // Deep-copy grid as the baseline for regeneration
-        this.baseGrid = this.grid.map(row => row.map(cell => [...cell]));
-
-        console.log(this)
-
+        this.tradeDisplayLevel = 0;   // 0 = off, N = highlight all level-N trades
     }
 
+    get cols() { return this.forest.cols; }
+    get rows() { return this.forest.rows; }
+    get grid() { return this.forest.grid; }
 
-    update() {
-        if (!PARAMS.resourceDepletion) return;
-        const rate = PARAMS.resourceRegenRate;
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                const cell = this.grid[i][j];
-                const base = this.baseGrid[i][j];
-                for (let r = 0; r < PARAMS.numResources; r++) {
-                    if (cell[r] < base[r]) {
-                        cell[r] = Math.min(cell[r] + rate, base[r]);
-                    }
-                }
-            }
-        }
-    }
+    getConcentration(x, y, r) { return this.forest.getConcentration(x, y, r); }
 
-    depleteCell(x, y, resourceIndex, amount) {
-        const col = Math.floor(x / PARAMS.cellSize);
-        const row = Math.floor(y / PARAMS.cellSize);
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
-        this.grid[row][col][resourceIndex] = Math.max(0, this.grid[row][col][resourceIndex] - amount * PARAMS.resourceDepletionRate);
-    }
-
-  
     draw(ctx) {
         this.renderCells(ctx);
 
@@ -329,93 +304,6 @@ class Forest {
         ctx.closePath();
         ctx.fill();
     }
-
-    setConcentrationRandomResource() {
-        // Each cell has concentrations for each resource
-        for (let i = 0; i < this.rows; i++) {
-            this.grid[i] = [];
-            for (let j = 0; j < this.cols; j++) {
-                const cell = new Array(3).fill(0);
-                cell[randomInt(PARAMS.numResources)] = 1;
-                this.grid[i][j] = cell;
-            }
-        }
-
-    }
-
-    
-    setConcentrationStripes() {
-        // Each cell has concentrations for each resource
-        for (let i = 0; i < this.rows; i++) {
-            this.grid[i] = [];
-            for (let j = 0; j < this.cols; j++) {
-                const cell = new Array(3).fill(0);
-                cell[Math.floor(j/2) % 3] = 1;
-                this.grid[i][j] = cell;
-            }
-        }
-
-    }
-
-    setConcentration() {
-        // Each cell has concentrations for each resource
-        for (let i = 0; i < this.rows; i++) {
-            this.grid[i] = [];
-            for (let j = 0; j < this.cols; j++) {
-                let cell = new Array(3).fill(0);
-                for (let r = 0; r < PARAMS.numResources; r++) {
-                    cell[r] = ((Math.max(this.setCellConcentration(j, i, r) - PARAMS.undulation_cutuff, 0))/(1-PARAMS.undulation_cutuff));
-                    // break;
-                }
-                this.grid[i][j] = cell;
-            }
-        }
-
-    }
-
-    setCellConcentration(j, i, resourceIndex) {
-        let hs = [];
-        for (let y = i * PARAMS.cellSize; y < (i+1) * PARAMS.cellSize; y++) {
-            for (let x = j * PARAMS.cellSize; x < (j+1) * PARAMS.cellSize; x++) {
-                hs.push(this.wavyNoise(x, y, this.seeds[resourceIndex]));
-            }
-        }
-        return average(hs);
-    }
-    
-
-    wavyNoise(x, y, seed) {
-        x *= PARAMS.roughness;
-        y *= PARAMS.roughness;
-        // Rotate coordinates a bit to avoid grid-like artifacts
-        const angle = 0.36; // tweak for more/less diagonals
-        const xr = x * Math.cos(angle) - y * Math.sin(angle);
-        const yr = x * Math.sin(angle) + y * Math.cos(angle);
-
-        // Combine a few sine waves with irrational frequency ratios
-        let v = 0;
-        v += Math.sin(xr * 0.013 + seed) * 0.7;
-        v += Math.sin(yr * 0.021 + seed * 1.3) * 0.5;
-        v += Math.sin((xr + yr) * 0.017 + seed * 2.1) * 0.3;
-        v += Math.sin((xr - yr) * 0.011 + seed * 3.7) * 0.2;
-
-        // Normalize back to 0–1 range
-        return (v + 1.7) / 3.4;
-    }
-
-
-
-    // Get concentration of a resource at pixel coordinate (x,y)
-    getConcentration(x, y, resourceIndex) {
-        const col = Math.floor(x / PARAMS.cellSize);
-        const row = Math.floor(y / PARAMS.cellSize);
-
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
-            return 0; // out of bounds
-        }
-        return this.grid[row][col][resourceIndex];
-    }
-
     renderCells(ctx) {
         
         for (let i = 0; i < this.rows; i++) {

@@ -1,11 +1,17 @@
-class SelectionManager {
-    constructor() {
+/**
+ * Click-and-drag interaction on the forest: rectangle selection, and spawning an agent whose
+ * social reach is set by the drag distance.
+ */
+import {PARAMS, gameEngine, sim} from '../browser/context.js';
+
+export class SelectionManager {
+    constructor(forestView) {
         this.start = null;
         this.end = null;
         this.isSpawning = false;
         this.isSelecting = false;
         this.tempHuman = null;
-        this.forest = gameEngine.automata.forest;
+        this.forest = forestView;   // view, not model: x/y are canvas coordinates
     }
 
     beginSelection(x, y) {
@@ -24,7 +30,7 @@ class SelectionManager {
             this.end = {x, y};
             this.isSpawning = true;
             this.isSelecting = false;
-            this.tempHuman = new Human({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
+            this.tempHuman = sim.world.createHuman({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
             gameEngine.automata.add_human(this.tempHuman);
         }
     }

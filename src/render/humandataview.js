@@ -1,4 +1,6 @@
-class HumanDataView {
+import {PARAMS, gameEngine} from '../browser/context.js';
+
+export class HumanDataView {
 
     constructor(x, y) {
         this.x = x;

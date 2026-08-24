@@ -1,4 +1,7 @@
-class Histogram {
+import {gameEngine} from '../browser/context.js';
+import {rgb} from './colors.js';
+
+export class Histogram {
     constructor(x, y, data, label, xSize, ySize) {
         this.xSize = xSize;
         this.ySize = ySize;
