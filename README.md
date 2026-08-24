@@ -1,143 +1,234 @@
-# Hierarchical Trades Simulation
+# Hierarchical Trades
 
-An agent-based economic simulation that models how trade norms, institutions, and management hierarchies emerge from simple local interactions between resource-producing agents.
+An agent-based simulation of how trade norms, and then **norms about norms**, emerge from
+purely local interaction — and of what that emergent hierarchy is *for*.
 
-## Overview
+Agents on a resource landscape produce, metabolise, and reproduce. They cannot move, but each
+has a **social reach** within which it can see neighbours and post a trade. Posting a trade
+costs labour and earns the inventor the spread. Once a trade accumulates surplus, another
+agent can build a trade *on top of it* — and the mechanism is the same at every level.
 
-Agents ("humans") are placed on a forest map with spatially distributed resources (Red, Green, Blue). They produce resources based on local concentration, metabolize them for energy, and reproduce when well-fed. Agents don't move, but have a **social reach** — a radius within which they can interact, discover trade opportunities, and establish norms.
+> **The core question:** can hierarchical institutions emerge from decentralised, rule-based
+> trading — and if they do, what do they accomplish?
 
-The core question: **can hierarchical institutions emerge purely from decentralized, rule-based trading behavior?**
+See **[RESEARCH.md](RESEARCH.md)** for the research agenda: the thesis, the six research
+groups, and the experiment plan.
 
-## How It Works
+---
 
-### Resources and Production
-- The forest has three resources (R, G, B) distributed via smooth noise functions, creating regional specialization
-- Agents produce resources proportional to their **productivity** and local **concentration**
-- Agents with low production potential become **laborers**, generating labor units instead
-- All agents metabolize resources for energy — they value a resource more when they need it and have less of it
+## Quick start
 
-### Reproduction
-- When an agent's total energy exceeds `reproductionEnergyThreshold`, it splits: a child spawns nearby inheriting `socialReach` and `productivity` with small Gaussian mutation
-- This keeps the population self-sustaining and allows selection to act on trade-building traits over time
+### Interactive
 
-### Level-1 Trades (Norms)
-- An agent notices that nearby agents value resources differently (e.g., some have surplus R but need G)
-- The agent spends labor to **establish a trade** — a fixed exchange rate between two resources
-- The trade is shared with all agents within the inventor's social reach
-- Any agent can invoke the trade if the exchange rate favors them
-- The **inventor** receives surplus (the spread between the two sides) as royalties
-- This models the emergence of **market norms** — commonly accepted exchange rates
+ES modules require a real HTTP server; `file://` will not work.
 
-### Level-2+ Trades (Hierarchical Institutions)
-- A level-1 trade accumulates surplus resources in its supply
-- An enterprising agent notices this surplus and establishes a **level-2 trade**: agents can exchange a resource for the level-1 trade's accumulated surplus
-- Agents who invoke the level-2 trade become **managers** of the level-1 trade
-- Once a trade has managers, surplus flows to the trade's supply instead of the inventor — redistributed through the hierarchy
-- The level-2 trade inventor receives *that* level's surplus, until a level-3 trade is built on top, and so on
-- **This is fully inductive** — the same mechanism creates level-3, 4, 5... trades with no special-casing
+```bash
+npm run serve          # python3 -m http.server 8000
+open http://localhost:8000/index.html
+```
 
-This loosely models how:
-- **Markets** form (level-1 trades)
-- **Companies** form around successful markets (level-2: managing a trade)
-- **Managers of managers** emerge (level-3+: managing the management)
-- **Institutions** are norms about norms about norms...
+### Headless experiments
 
-### Key Parameters
-| Parameter | Description |
-|-----------|-------------|
-| `socialReach` | Per-agent radius for interaction (right-skewed distribution) |
-| `productivity` | Per-agent production efficiency (0–1.2) |
-| `surplus_multiplier` | Controls trade exchange rate spread |
-| `minTradeSupplyForHierarchy` | Minimum supply a trade must accumulate before a higher-level trade can target it |
-| `inventorPerpetualRoyalty` | Fraction of surplus inventor keeps after trade is managed (default: 0) |
-| `reproductionEnergyThreshold` | Energy level at which an agent reproduces |
-| `reproductionMutationRate` | Std dev of trait mutation on reproduction (as fraction of trait value) |
+Requires Node ≥ 22.5 (`brew install node`). **There are no npm dependencies** — the test
+runner and SQLite are Node built-ins, so there is no `node_modules` and nothing to install.
 
-## Running
+```bash
+npm run scenarios                                        # what can I run?
+npm run mechanics                                        # what can I swap?
 
-Open `index.html` in a browser. No build step required.
+node src/experiment/cli.js run   --scenario baseline --seed 7 --ticks 2000
+node src/experiment/cli.js sweep --scenario g1-value-accounting --seeds 1-10
+node src/experiment/cli.js query --experiment g1-value-accounting --metric core.finalPopulation
+```
 
-**Controls:**
-- **Space**: Pause / Play
-- **Reset Simulation**: Restart with current parameters (reads all UI sliders)
-- **Toggle Social Reach**: Show/hide agent reach circles
-- **Clear Selection**: Deselect all highlighted agents
-- **Click + drag on forest**: Spawn a new agent (drag to set social reach)
-- **Shift + click + drag on forest**: Select agents in a rectangle
-- **Click on Human Data View rows**: Toggle highlight for individual agents
-- **Click on Trade Data View rows**: Select a trade to visualize on the map
-- **Find human / Find trade inputs**: Look up by ID; shows status if no longer alive
+### Tests
 
-## Parameter UI & Saved Configs
+```bash
+npm test               # 67 tests, ~60s
+npm run test:slow      # adds the 1000-tick golden trajectory
+```
 
-The control panel exposes sliders for all major parameters across four sections: **Sim**, **Forest**, **Humans**, **Trading**, and **Hierarchical Trades**. Changes take effect on the next Reset.
-
-**Saved Configurations** lets you name and store a full parameter snapshot to `localStorage`. Configs can be:
-- **Loaded** — applies all saved params directly to the sim and resets (works even if the UI has changed since saving)
-- **Exported** as a portable `.json` file
-- **Imported** from a `.json` file (merges by name, useful for moving configs between local dev and GitHub Pages)
-
-## Map Key
-
-When a **trade is selected** in the Trade Data View, overlays appear on the forest map:
-
-### Level-1 Trade Selected
-| Indicator | Meaning |
-|-----------|---------|
-| **Black lines** between agents | Agents who have exchanged through this trade |
-| **Green diamond** with "inv" label | The trade's inventor |
-| **Orange circles** with "mgr" label | Agents who manage this trade (via a level-2 trade) |
-
-### Level-2+ Trade Selected
-| Indicator | Meaning |
-|-----------|---------|
-| **Orange lines** between agents | The *parent* trade's partner network (context layer) |
-| **Orange diamond** | The parent trade's inventor |
-| **Blue lines** between agents | This trade's own partner connections |
-| **Blue dashed lines** (manager → inventor) | Management hierarchy: managers connected to parent trade inventor |
-| **Orange circles** with "mgr" label | Managers of the parent trade |
-| **Green diamond** with "inv" label | This trade's inventor |
-
-All overlay lines use a dark outline for legibility against the colorful forest background.
-
-### Agent Selection
-| Indicator | Meaning |
-|-----------|---------|
-| **Cyan circle with crosshairs** | Selected/highlighted agent (via click or drag-select) |
-| **Yellow circle** | Agent currently being spawned |
-| **White dot with ID label** | Normal agent |
-
-### Forest Background
-- **Red/Green/Blue coloring** per cell represents resource concentration
-- Brighter color = higher concentration of that resource
+---
 
 ## Architecture
 
+The organising rule: **the kernel knows nothing about rendering, measurement, or
+experiments.** Everything else attaches to it from outside.
+
 ```
-gameengine.js    — Main loop, rendering (draw runs every frame even when paused)
-automata.js      — Simulation state, human lifecycle, birth counter
-human.js         — Agent behavior: production, metabolism, trade building, reproduction
-trade.js         — Trade execution, surplus distribution, hierarchical invocation
-trademanager.js  — Trade lifecycle, cleanup, level tallies
-forest.js        — Resource map, trade overlay rendering
-params.js        — All tunable parameters
-datamanager.js   — Stats aggregation, view layout
-tradeview.js     — Two-table trade display (L1 upper, L2+ lower), trade selection/pinning
+src/
+  core/         Pure simulation kernel. No DOM, no canvas, no globals, no Math.random.
+    rng.js          Seeded PRNG (sfc32) with named substreams
+    params.js       Parameter schema: defaults, types, ranges, validation
+    simulation.js   The root object: owns rng, params, mechanics, ledger, events, world
+    world.js        Population + forest + trade system
+    human.js        Agent behaviour
+    trade.js        Exchange, surplus routing, hierarchy
+    trademanager.js Per-tick ordering, escrow settlement, retirement
+    forest.js       Resource grid (state only)
+    ledger.js       Resource accounting and conservation checks
+    events.js       Event bus connecting kernel to probes
+    statehash.js    Canonical trajectory digest
+
+  mechanics/    Swappable rules. Every default reproduces historical behaviour.
+    metabolism · valuation · pricing · reproduction · lifecycle · terrain · registry
+
+  probes/       Measurement. Subscribes to events; the kernel never knows about metrics.
+    core · tradelifecycle · value · hierarchy · traits · money
+
+  scenarios/    One declarative file per research group.
+  experiment/   Headless runner, parameter sweeps, SQLite + JSONL storage.
+  render/       Canvas drawing. Reads the kernel, never mutates it.
+  browser/      Interactive shell: app loop, context, DOM helpers.
+
+test/           67 tests, including golden-trajectory regression fixtures.
+tools/          Provenance tooling.
+attic/          Pre-refactor code, not wired in. See attic/README.md.
 ```
 
-## Trade Data View
+**The interactive and headless paths share one kernel.** `sim.step()` is the only way the
+world advances in either. A test asserts their trajectories are bit-identical.
 
-**Upper table** — Level-1 trades only, sorted by invocations:
+---
 
-| Column | Meaning |
-|--------|---------|
-| T# | Trade ID |
-| Inv | Inventor's human ID |
-| Exchange | `R <-> G` |
-| Surplus | Combined surplus rate (surpluses.A + surpluses.B) |
-| Invk | Total invocations |
-| Volume | Total volume moved |
-| Supply | Resources accumulated in the trade's supply |
-| Mgrs | Number of managers |
+## Reproducibility
 
-**Lower table** — Level-2+ trades, sorted by level then invocations. Selecting a L2+ trade highlights its L1 ancestor in the upper table (orange).
+Every run is fully determined by `(git SHA, scenario, parameters, seed)`.
+
+- **No `Math.random()`** anywhere in `core`, `mechanics`, or `probes`. All randomness draws
+  from an injected `Random`.
+- **No static counters.** Ids live on the simulation, so two simulations in one process
+  cannot interleave.
+- **Provenance is recorded**, including whether the working tree was dirty. A result marked
+  `code_dirty = 1` came from uncommitted code and should not go in a paper.
+
+### Golden trajectories — please read before changing the kernel
+
+`test/fixtures/golden-*.json` were captured from the **pre-refactor** flat scripts with a
+seeded RNG, and `test/golden.test.js` asserts the current kernel reproduces them tick for
+tick. This is what makes it safe to refactor or optimise the simulation.
+
+If a golden test fails, the dynamics changed. That is only acceptable as a deliberate
+decision — in which case recapture the fixture in the same commit and say why in the message.
+
+Two consequences worth internalising:
+
+1. **Do not "clean up" the unconditional random draws in the `Human` constructor.** They look
+   wasteful and are load-bearing; the comment there explains why.
+2. **New rules go in `mechanics/` as new named variants**, never as edits to a default.
+
+---
+
+## Swappable mechanics
+
+A scenario names the variant it wants; the kernel calls it without knowing which was chosen.
+
+| Mechanic | Default | Other variants |
+|---|---|---|
+| `metabolism` | `classic` | `linear` |
+| `valuation` | `needOverHoldings` | `linearNeedOverHoldings`, `needOnly` |
+| `pricing` | `dispersionSpread` | `fixedMargin` |
+| `reproduction` | `asexualSplit` | `sexualBlend`, `none` |
+| `lifecycle` | `idleWindow` | `graceCounter`, `never` |
+| `terrain` | `wavy` | `stripes`, `slabs`, `randomResource`, `uniform` |
+
+```js
+new Simulation({
+    params: {seed: 7, maxTradeLevel: 2},
+    mechanics: {lifecycle: 'graceCounter', valuation: 'needOnly'},
+});
+```
+
+---
+
+## Experiment output
+
+```
+results/<experiment>/
+  experiment.db                  SQLite: run manifests + scalar metrics
+  <run-id>/
+    config.json                  fully resolved params, mechanics, git SHA
+    summary.json                 status, wall time, final state hash
+    timeseries.jsonl             per-sample metrics from every probe
+    trades.jsonl                 one row per retired trade (lifecycle probe)
+```
+
+`results/` is gitignored — runs are regenerable from their manifests.
+
+Metrics are stored long-format so that adding a probe never requires a schema migration:
+
+```sql
+SELECT r.seed,
+       r.params_json ->> '$.maxTradeLevel'                                  AS max_level,
+       MAX(CASE WHEN m.key = 'core.maxLevelReached'  THEN m.value END)      AS depth,
+       MAX(CASE WHEN m.key = 'value.finalFracPooled' THEN m.value END)      AS pooled
+FROM runs r JOIN run_metrics m USING(run_id)
+WHERE r.experiment = 'g1-value-accounting' AND r.status = 'ok'
+GROUP BY r.run_id;
+```
+
+JSONL reads straight into pandas: `pd.read_json(path, lines=True)`.
+
+---
+
+## Adding a research direction
+
+1. Add a probe in `src/probes/` and register it.
+2. Add any new rule as a **named variant** in the relevant `src/mechanics/` module.
+3. Add a scenario in `src/scenarios/` with its params, mechanics, probes, grid, and seeds.
+4. Add a test.
+
+The kernel should not need to change. If it does, that is worth a moment's thought — it
+usually means the new idea wants a new event rather than new logic in `human.js`.
+
+---
+
+## Known limitations
+
+These are real constraints on what can currently be claimed, not TODO noise.
+
+- **`numResources` is capped at 3.** The terrain generators build length-3 cells and the
+  renderer maps resources to RGB. This underpowers the money experiment (Group 5): on three
+  nodes, betweenness is nearly degenerate. Lifting the cap is a prerequisite for a serious
+  Mengerian result.
+- **No defection.** Every agent obeys posted rates mechanically, so there is nothing to
+  monitor or sanction. This blocks Ostrom principles 3–5 and Group 2 entirely. One mechanic
+  (~60 lines) unlocks all three — see `src/scenarios/g2-enforcement.js`.
+- **Trade lifespan is quantised by `clear_trades_every`** under the default `idleWindow`
+  retirement policy. Survival analysis should use `lifecycle: 'graceCounter'`.
+- **`humansWithinReach()` is O(n²) per tick** and dominates runtime (~27 ticks/s at 550
+  agents headless; slower in-browser with rendering). A spatial hash grid is the obvious fix,
+  and the golden tests make it safe to attempt.
+- **`sexualBlend` reproduction is unvalidated** — not covered by goldens, and it makes
+  reproduction density-dependent, coupling evolutionary to spatial dynamics.
+- **`PARAMS.royalty` and `Trade.laborRequired`** are declared/computed but unread.
+- **Group 3's network probe does not exist yet.** Terrain sweeps work today; graph and
+  spectral measures do not.
+
+---
+
+## Interactive controls
+
+**Space** pause/play · **Click + drag** on the forest spawns an agent (drag sets its reach) ·
+**Shift + click + drag** selects a region · **Click a table row** to select a human or trade ·
+**Level Display** cycles the hierarchy overlay OFF → L1 → L2 → …
+
+Saved configurations live in `localStorage` and can be exported and imported as JSON.
+Configs saved before a parameter existed still load: missing keys fall back to schema
+defaults, unknown keys are ignored, and out-of-range values are clamped with a console
+warning rather than breaking the page.
+
+---
+
+## Map key
+
+| Indicator | Meaning |
+|---|---|
+| Red / green / blue cell tint | Resource concentration |
+| White dot | Agent |
+| Cyan circle with crosshairs | Selected agent |
+| Green diamond (`inv`) | Trade inventor |
+| Orange circle (`mgr`) | Manager of the selected trade |
+| Black lines | Agents who exchanged through the selected trade |
+| Orange lines / diamond | Parent trade's network and inventor (L2+ selected) |
+| Blue dashed lines | Management hierarchy: managers → parent inventor |
