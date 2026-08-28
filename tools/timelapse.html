@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spatial Timelapse — Hierarchical Trades</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+#drop-zone {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100vh; gap: 16px;
+}
+#drop-zone.hidden { display: none; }
+#drop-zone h1 { font-size: 24px; font-weight: 400; }
+#drop-zone p { color: #888; max-width: 500px; text-align: center; line-height: 1.6; }
+#drop-zone button {
+    padding: 12px 24px; font-size: 16px; background: #2d5a8e; color: #fff;
+    border: none; border-radius: 6px; cursor: pointer;
+}
+#drop-zone button:hover { background: #3a6fa8; }
+
+#viewer { display: none; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
+#viewer.active { display: flex; }
+
+#info { font-size: 14px; color: #aaa; }
+
+canvas { border: 1px solid #333; }
+
+#controls {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+#controls button {
+    padding: 6px 14px; font-size: 14px; background: #2d5a8e; color: #fff;
+    border: none; border-radius: 4px; cursor: pointer; min-width: 60px;
+}
+#controls button:hover { background: #3a6fa8; }
+#scrubber { width: 400px; }
+#tick-label { font-variant-numeric: tabular-nums; min-width: 80px; }
+#speed-label { min-width: 60px; font-size: 13px; color: #aaa; }
+
+#legend {
+    display: flex; gap: 16px; font-size: 13px; align-items: center; flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+}
+
+#layer-toggles { display: flex; gap: 14px; font-size: 13px; }
+#layer-toggles label { cursor: pointer; user-select: none; }
+</style>
+</head>
+<body>
+
+<div id="drop-zone">
+    <h1>Spatial Timelapse Viewer</h1>
+    <p>Select a run directory from a g3-geography experiment. You need three files:
+       <strong>spatial-terrain.jsonl</strong>, <strong>spatial-snapshots.jsonl</strong>,
+       and optionally <strong>spatial-events.jsonl</strong>.</p>
+    <button onclick="filePicker.click()">Choose files</button>
+    <input type="file" id="filePicker" multiple accept=".jsonl,.json" style="display:none">
+    <p style="font-size:13px; color:#666">Or drag and drop the .jsonl files here</p>
+</div>
+
+<div id="viewer">
+    <div id="info"></div>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <button id="playBtn">Play</button>
+        <button id="stepBack">&lt;</button>
+        <input type="range" id="scrubber" min="0" max="0" value="0">
+        <button id="stepFwd">&gt;</button>
+        <span id="tick-label">Tick 0</span>
+        <button id="slower">-</button>
+        <span id="speed-label">1x</span>
+        <button id="faster">+</button>
+    </div>
+    <div id="layer-toggles">
+        <label><input type="checkbox" id="showTerrain" checked> Terrain</label>
+        <label><input type="checkbox" id="showReach" checked> Reach circles</label>
+        <label><input type="checkbox" id="showPartners" checked> Partners</label>
+        <label><input type="checkbox" id="showEvents"> Birth/death markers</label>
+    </div>
+    <div id="legend"></div>
+</div>
+
+<script>
+const LEVEL_COLORS = [
+    null,
+    {fill: 'rgba(0, 0, 0, 0.25)',       stroke: 'rgba(0, 0, 0, 0.6)',        label: 'Level 1', dot: '#555'},
+    {fill: 'rgba(30, 100, 255, 0.2)',    stroke: 'rgba(30, 100, 255, 0.6)',   label: 'Level 2', dot: '#1e64ff'},
+    {fill: 'rgba(150, 0, 200, 0.18)',    stroke: 'rgba(150, 0, 200, 0.55)',   label: 'Level 3', dot: '#9600c8'},
+    {fill: 'rgba(0, 180, 0, 0.18)',      stroke: 'rgba(0, 180, 0, 0.55)',     label: 'Level 4+', dot: '#00b400'},
+];
+
+let terrain = null;
+let snapshots = {};   // tick -> [{tradeId, level, agents, ...}]
+let events = [];
+let ticks = [];
+let tickIndex = 0;
+let playing = false;
+let speed = 1;
+let animFrame = null;
+let lastFrameTime = 0;
+let terrainImageData = null;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// --- File loading ---
+
+document.getElementById('filePicker').addEventListener('change', e => loadFiles(e.target.files));
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#3a6fa8'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    loadFiles(e.dataTransfer.files);
+});
+
+async function loadFiles(fileList) {
+    const files = {};
+    for (const f of fileList) {
+        if (f.name.includes('spatial-terrain'))   files.terrain = await f.text();
+        if (f.name.includes('spatial-snapshots')) files.snapshots = await f.text();
+        if (f.name.includes('spatial-events'))    files.events = await f.text();
+    }
+    if (!files.terrain || !files.snapshots) {
+        alert('Need at least spatial-terrain.jsonl and spatial-snapshots.jsonl');
+        return;
+    }
+    parseData(files);
+}
+
+function parseData(files) {
+    terrain = JSON.parse(files.terrain.trim().split('\n')[0]);
+
+    snapshots = {};
+    for (const line of files.snapshots.trim().split('\n')) {
+        const row = JSON.parse(line);
+        if (!snapshots[row.tick]) snapshots[row.tick] = [];
+        snapshots[row.tick].push(row);
+    }
+
+    events = [];
+    if (files.events) {
+        for (const line of files.events.trim().split('\n')) {
+            events.push(JSON.parse(line));
+        }
+    }
+
+    ticks = Object.keys(snapshots).map(Number).sort((a, b) => a - b);
+    tickIndex = 0;
+
+    canvas.width = terrain.width;
+    canvas.height = terrain.height;
+
+    const scrubber = document.getElementById('scrubber');
+    scrubber.min = 0;
+    scrubber.max = ticks.length - 1;
+    scrubber.value = 0;
+
+    document.getElementById('info').textContent =
+        `${ticks.length} snapshots, ticks ${ticks[0]}–${ticks[ticks.length-1]}, ` +
+        `${terrain.grid.length}×${terrain.grid[0].length} cells, ` +
+        `${events.length} events`;
+
+    buildTerrainImage();
+    buildLegend();
+
+    dropZone.classList.add('hidden');
+    document.getElementById('viewer').classList.add('active');
+    draw();
+}
+
+// --- Terrain rendering ---
+
+function buildTerrainImage() {
+    const {grid, cellSize, width, height} = terrain;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = width;
+    offscreen.height = height;
+    const octx = offscreen.getContext('2d');
+
+    for (let i = 0; i < grid.length; i++) {
+        for (let j = 0; j < grid[i].length; j++) {
+            const cell = grid[i][j];
+            const r = Math.round(cell[0] * 200);
+            const g = Math.round(cell[1] * 200);
+            const b = Math.round(cell[2] * 200);
+            octx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            octx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+        }
+    }
+    terrainImageData = offscreen;
+}
+
+// --- Drawing ---
+
+function draw() {
+    const tick = ticks[tickIndex];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (document.getElementById('showTerrain').checked && terrainImageData) {
+        ctx.drawImage(terrainImageData, 0, 0);
+    } else {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const frame = snapshots[tick] || [];
+
+    // Draw reach circles (bottom layer)
+    if (document.getElementById('showReach').checked) {
+        for (const trade of frame) {
+            if (trade.deprecated) continue;
+            const colors = LEVEL_COLORS[Math.min(trade.level, 4)] || LEVEL_COLORS[4];
+            for (const agent of trade.agents) {
+                if (agent.role === 'partner') continue;
+                ctx.beginPath();
+                ctx.arc(agent.x, agent.y, agent.reach, 0, Math.PI * 2);
+                ctx.fillStyle = colors.fill;
+                ctx.fill();
+                ctx.strokeStyle = colors.stroke;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+    }
+
+    // Draw agents
+    const showPartners = document.getElementById('showPartners').checked;
+    for (const trade of frame) {
+        if (trade.deprecated) continue;
+        const colors = LEVEL_COLORS[Math.min(trade.level, 4)] || LEVEL_COLORS[4];
+        for (const agent of trade.agents) {
+            if (agent.role === 'partner' && !showPartners) continue;
+            ctx.beginPath();
+            const radius = agent.role === 'inventor' ? 4 : agent.role === 'manager' ? 3 : 2;
+            ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = agent.role === 'inventor' ? '#fff' :
+                            agent.role === 'manager' ? colors.stroke : 'rgba(200,200,200,0.4)';
+            ctx.fill();
+        }
+    }
+
+    // Draw event markers
+    if (document.getElementById('showEvents').checked) {
+        const nearEvents = events.filter(e => Math.abs(e.tick - tick) <= 5);
+        for (const ev of nearEvents) {
+            if (ev.x == null) continue;
+            const age = Math.abs(ev.tick - tick);
+            const alpha = 1 - age / 6;
+            if (ev.event === 'trade:built') {
+                ctx.strokeStyle = `rgba(0, 255, 100, ${alpha})`;
+                ctx.lineWidth = 2;
+                drawCross(ctx, ev.x, ev.y, 6);
+            } else if (ev.event === 'trade:deprecated') {
+                ctx.strokeStyle = `rgba(255, 60, 60, ${alpha})`;
+                ctx.lineWidth = 2;
+                drawX(ctx, ev.x, ev.y, 5);
+            }
+        }
+    }
+
+    document.getElementById('tick-label').textContent = `Tick ${tick}`;
+    document.getElementById('scrubber').value = tickIndex;
+}
+
+function drawCross(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.moveTo(x - size, y); ctx.lineTo(x + size, y);
+    ctx.moveTo(x, y - size); ctx.lineTo(x, y + size);
+    ctx.stroke();
+}
+
+function drawX(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.moveTo(x - size, y - size); ctx.lineTo(x + size, y + size);
+    ctx.moveTo(x + size, y - size); ctx.lineTo(x - size, y + size);
+    ctx.stroke();
+}
+
+function buildLegend() {
+    const legend = document.getElementById('legend');
+    legend.innerHTML = '';
+    const items = [
+        {color: '#fff', label: 'Inventor'},
+        {color: LEVEL_COLORS[1].dot, label: 'L1 trade'},
+        {color: LEVEL_COLORS[2].dot, label: 'L2 trade'},
+        {color: LEVEL_COLORS[3].dot, label: 'L3 trade'},
+        {color: 'rgba(200,200,200,0.6)', label: 'Partner'},
+        {color: 'rgb(0, 255, 100)', label: 'Trade born'},
+        {color: 'rgb(255, 60, 60)', label: 'Trade died'},
+    ];
+    for (const item of items) {
+        const el = document.createElement('span');
+        el.className = 'legend-item';
+        el.innerHTML = `<span class="legend-dot" style="background:${item.color}"></span> ${item.label}`;
+        legend.appendChild(el);
+    }
+}
+
+// --- Controls ---
+
+document.getElementById('playBtn').addEventListener('click', togglePlay);
+document.getElementById('stepBack').addEventListener('click', () => { step(-1); });
+document.getElementById('stepFwd').addEventListener('click', () => { step(1); });
+document.getElementById('scrubber').addEventListener('input', e => {
+    tickIndex = parseInt(e.target.value);
+    draw();
+});
+document.getElementById('slower').addEventListener('click', () => {
+    speed = Math.max(0.25, speed / 2);
+    document.getElementById('speed-label').textContent = speed + 'x';
+});
+document.getElementById('faster').addEventListener('click', () => {
+    speed = Math.min(16, speed * 2);
+    document.getElementById('speed-label').textContent = speed + 'x';
+});
+
+for (const id of ['showTerrain', 'showReach', 'showPartners', 'showEvents']) {
+    document.getElementById(id).addEventListener('change', draw);
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+});
+
+function togglePlay() {
+    playing = !playing;
+    document.getElementById('playBtn').textContent = playing ? 'Pause' : 'Play';
+    if (playing) {
+        lastFrameTime = performance.now();
+        animate();
+    } else if (animFrame) {
+        cancelAnimationFrame(animFrame);
+        animFrame = null;
+    }
+}
+
+function step(dir) {
+    if (playing) togglePlay();
+    tickIndex = Math.max(0, Math.min(ticks.length - 1, tickIndex + dir));
+    draw();
+}
+
+function animate(now) {
+    if (!playing) return;
+    const elapsed = now - lastFrameTime;
+    const interval = 200 / speed;
+    if (elapsed >= interval) {
+        lastFrameTime = now;
+        tickIndex++;
+        if (tickIndex >= ticks.length) {
+            tickIndex = ticks.length - 1;
+            togglePlay();
+            return;
+        }
+        draw();
+    }
+    animFrame = requestAnimationFrame(animate);
+}
+</script>
+</body>
+</html>

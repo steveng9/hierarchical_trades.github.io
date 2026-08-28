@@ -36,7 +36,6 @@ export class DataManager {
 
         const varViewer = new VariableViewer(leftX, belowForestY + hdv.panelHeight + PARAMS.margin, "Variables", () => ({
             "generation": gameEngine.automata.generation,
-            "sim speed (gen/s)": gameEngine.updatesPerSecond.toFixed(0),
             "num humans": this.automata.humans.length,
             "births": this.automata.totalBirths,
             "num laborers": this.laborers,
@@ -48,7 +47,7 @@ export class DataManager {
             "produced R": gameEngine.total_produced[0].toFixed(2),
             "consumed R": gameEngine.total_consumed[0].toFixed(2),
             "lost R": gameEngine.total_lost[0].toFixed(2),
-        }));
+        }), {speedGetter: () => gameEngine.updatesPerSecond});
         gameEngine.addGraph(varViewer);
 
         // Right column: TradeDataView + SelectionDataView (created before TradeFlowView
@@ -63,6 +62,7 @@ export class DataManager {
         // Flow view: y is computed dynamically each draw to stay below both columns
         const tfv = new TradeFlowView(PARAMS.margin, varViewer, sdv);
         gameEngine.addGraph(tfv);
+        gameEngine.clickCapableGraphs.push(tfv);
 
         // Stats graphs: 8 time-series panels below the flow view
         gameEngine.addGraph(new StatsPanel(tfv));

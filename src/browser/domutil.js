@@ -45,6 +45,16 @@ export function writeParameterInputs(params) {
     });
 }
 
+/** Read mechanic selections from any <select> elements with id="mechanic_*". */
+export function readMechanicInputs() {
+    const overrides = {};
+    document.querySelectorAll('select[id^="mechanic_"]').forEach(sel => {
+        const mechanic = sel.id.replace('mechanic_', '');
+        if (sel.value) overrides[mechanic] = sel.value;
+    });
+    return overrides;
+}
+
 export function setDatabaseIndicator(connected) {
     const el = document.getElementById('db');
     if (!el) return;

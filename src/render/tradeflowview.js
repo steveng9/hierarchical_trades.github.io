@@ -96,6 +96,38 @@ export class TradeFlowView {
         return colors[r] !== undefined ? colors[r] : '#888888';
     }
 
+    handleClick(mouseX, mouseY) {
+        const panelY = this.y;
+        if (mouseX < this.x || mouseX > this.x + this.panelWidth ||
+            mouseY < panelY || mouseY > panelY + this.panelHeight) return false;
+
+        const layout = this.computeLayout();
+        const trades = this.displayedTrades;
+
+        let closest = null;
+        let closestDist = Infinity;
+        for (const trade of trades) {
+            const pos = layout.get(trade.id);
+            if (!pos) continue;
+            const r = this.nodeRadius(trade, pos.maxR);
+            const dx = mouseX - pos.x;
+            const dy = mouseY - pos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= Math.max(r, 8) && dist < closestDist) {
+                closest = trade;
+                closestDist = dist;
+            }
+        }
+
+        if (closest) {
+            gameEngine.automata.forest.selectTrade(closest);
+            const tdv = gameEngine.automata.datamanager?.tradeDataView;
+            if (tdv) tdv.selectedTrade = closest;
+            return true;
+        }
+        return false;
+    }
+
     update() {}
 
     draw(ctx) {

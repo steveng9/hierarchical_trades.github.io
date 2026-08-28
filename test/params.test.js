@@ -13,7 +13,7 @@ test('unknown keys throw in strict mode and are ignored otherwise', () => {
 });
 
 test('range violations throw', () => {
-    assert.throws(() => resolveParams({numResources: 99}), /above its maximum/);
+    assert.throws(() => resolveParams({undulation_cutuff: 2}), /above its maximum/);
     assert.throws(() => resolveParams({initialHumans: 0}), /below its minimum/);
 });
 

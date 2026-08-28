@@ -47,7 +47,7 @@ export class Human {
         this.parentIds = [];
 
         this.age = 0;
-        this.maxAge = sim.rng.normal(params.maxHumanAge, params.maxHumanAge / 20);
+        this.maxAge = sim.rng.normal(params.maxHumanAge, params.maxHumanAge / 6);
         this.socialReach = options.reach ?? drawnReach;
         this.productivity = sim.rng.float(0, params.production_max);
 
@@ -370,9 +370,10 @@ export class Human {
 
     // -- trading ----------------------------------------------------------------------
 
-    /** Attempt every known trade that improves on this agent's own valuation ratio. */
+    /** Invoke trades selected by the active tradeSelection mechanic. */
     makeRandomTrades() {
         const n = this.sim.params.numResources;
+        const selector = this.sim.mechanics.tradeSelection;
         let attempted = 0;
         let accepted = 0;
 
@@ -380,18 +381,18 @@ export class Human {
             for (let r2 = 0; r2 < n; r2++) {
                 if (r1 === r2) continue;
 
-                for (const info of this.sim.rng.shuffle(this.my_trades[r1][r2])) {
+                const selected = selector.select(this, this.my_trades[r1][r2], this.sim);
+                for (const info of selected) {
                     const {trade, side} = info;
                     const rIn = trade.resourcesIn[side];
-                    assert(rIn === r1, `resources ${rIn} and ${r1} are mixed up`, {tradeId: trade.id});
-                    const rOut = trade.resourceInOppositeSide(side);
-
-                    const amountIn = 1;
-                    if (this.favorsTrade(trade, side, rIn, rOut) && this.canAffordTrade(rIn, amountIn)) {
-                        attempted += 1;
-                        const traded = trade.invoke(this, side, amountIn);
-                        accepted += traded;
-                        if (traded > 0) this.tradeInvocations[rOut]++;
+                    const amountIn = this.sim.params.tradeAmountPerInvocation;
+                    if (!this.canAffordTrade(rIn, amountIn)) continue;
+                    attempted += 1;
+                    const traded = trade.invoke(this, side, amountIn);
+                    accepted += traded;
+                    if (traded > 0) {
+                        const rOut = trade.resourceInOppositeSide(side);
+                        this.tradeInvocations[rOut]++;
                     }
                 }
             }

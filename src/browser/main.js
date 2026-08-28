@@ -17,7 +17,7 @@
  */
 import {BrowserApp} from './app.js';
 import {gameEngine, toggleRunning, setRunning} from './context.js';
-import {readParameterInputs, writeParameterInputs} from './domutil.js';
+import {readParameterInputs, writeParameterInputs, readMechanicInputs} from './domutil.js';
 import {defaultParams} from '../core/params.js';
 
 let app = null;
@@ -43,9 +43,15 @@ function boot() {
 /** Rebuild the simulation from the current control-panel values. */
 function reset() {
     setRunning(true);
-    app.reset(readParameterInputs());
-    // Reflect what the schema actually accepted, including any clamping.
+    app.reset(readParameterInputs(), readMechanicInputs());
     writeParameterInputs(app.sim.params);
+}
+
+function resetNewSeed() {
+    const seedInput = document.getElementById('seed');
+    const current = parseInt(seedInput?.value) || 0;
+    if (seedInput) seedInput.value = current + 1;
+    reset();
 }
 
 function pause() {
@@ -94,7 +100,7 @@ Object.defineProperties(window, {
     app:    {get: () => app, configurable: true},
 });
 Object.assign(window, {
-    reset, pause, loadParameters, toggleSocialReach, clearHumanSelection, cycleTradeLevel,
+    reset, resetNewSeed, pause, loadParameters, toggleSocialReach, clearHumanSelection, cycleTradeLevel,
     gameEngine,
 });
 

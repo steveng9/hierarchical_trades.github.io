@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --test 'test/*.test.js'",
     "test:golden": "node --test test/golden.test.js",
-    "serve": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000",
     "sim": "node src/experiment/cli.js",
     "scenarios": "node src/experiment/cli.js scenarios",
     "mechanics": "node src/experiment/cli.js mechanics",

@@ -29,7 +29,7 @@ export const geography = {
     description: 'Resource-landscape topology and its effect on institutional structure.',
     params: {},
     mechanics: {},
-    probes: ['core', 'hierarchy'],
+    probes: ['core', 'hierarchy', 'spatial'],
     ticks: 3000,
     samplePeriod: 10,
 

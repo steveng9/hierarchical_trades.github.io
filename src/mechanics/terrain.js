@@ -58,7 +58,7 @@ export const TERRAIN_GENERATORS = {
         for (let i = 0; i < rows; i++) {
             grid[i] = [];
             for (let j = 0; j < cols; j++) {
-                const cell = new Array(3).fill(0);
+                const cell = new Array(params.numResources).fill(0);
                 for (let r = 0; r < params.numResources; r++) {
                     cell[r] = Math.max(cellConcentration(j, i, seeds[r], params) - cutoff, 0) / (1 - cutoff);
                 }
@@ -74,7 +74,7 @@ export const TERRAIN_GENERATORS = {
         for (let i = 0; i < rows; i++) {
             grid[i] = [];
             for (let j = 0; j < cols; j++) {
-                const cell = new Array(3).fill(0);
+                const cell = new Array(params.numResources).fill(0);
                 cell[rng.int(params.numResources)] = 1;
                 grid[i][j] = cell;
             }
@@ -88,7 +88,7 @@ export const TERRAIN_GENERATORS = {
         for (let i = 0; i < rows; i++) {
             grid[i] = [];
             for (let j = 0; j < cols; j++) {
-                const cell = new Array(3).fill(0);
+                const cell = new Array(params.numResources).fill(0);
                 cell[Math.floor(j / 2) % params.numResources] = 1;
                 grid[i][j] = cell;
             }
@@ -106,7 +106,7 @@ export const TERRAIN_GENERATORS = {
         for (let i = 0; i < rows; i++) {
             grid[i] = [];
             for (let j = 0; j < cols; j++) {
-                const cell = new Array(3).fill(0);
+                const cell = new Array(params.numResources).fill(0);
                 cell[Math.min(params.numResources - 1, Math.floor((j / cols) * params.numResources))] = 1;
                 grid[i][j] = cell;
             }
@@ -120,7 +120,7 @@ export const TERRAIN_GENERATORS = {
         for (let i = 0; i < rows; i++) {
             grid[i] = [];
             for (let j = 0; j < cols; j++) {
-                const cell = new Array(3).fill(0);
+                const cell = new Array(params.numResources).fill(0);
                 for (let r = 0; r < params.numResources; r++) cell[r] = 1;
                 grid[i][j] = cell;
             }

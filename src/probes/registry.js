@@ -7,6 +7,7 @@ import {ValueLedgerProbe} from './valueledger.js';
 import {HierarchyProbe} from './hierarchy.js';
 import {TraitProbe} from './traits.js';
 import {MoneyProbe} from './money.js';
+import {SpatialProbe} from './spatial.js';
 
 export const PROBE_REGISTRY = {
     core:      CoreProbe,
@@ -15,6 +16,7 @@ export const PROBE_REGISTRY = {
     hierarchy: HierarchyProbe,
     traits:    TraitProbe,
     money:     MoneyProbe,
+    spatial:   SpatialProbe,
 };
 
 /** @param {string[]} names @returns {import('./probe.js').Probe[]} */

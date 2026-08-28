@@ -10,6 +10,17 @@
 import {PARAMS, gameEngine} from '../browser/context.js';
 import {distance} from '../core/mathutil.js';
 
+const RESOURCE_PALETTE = [
+    [1, 0, 0],     // 0 — red
+    [0, 1, 0],     // 1 — green
+    [0, 0, 1],     // 2 — blue
+    [1, 0.75, 0],  // 3 — gold
+    [0.7, 0, 1],   // 4 — purple
+    [0, 0.9, 0.9], // 5 — teal
+    [1, 0.4, 0],   // 6 — orange
+    [0.6, 1, 0.2], // 7 — lime
+];
+
 export class ForestView {
     /** @param {import('../core/forest.js').Forest} forest */
     constructor(forest) {
@@ -305,13 +316,20 @@ export class ForestView {
         ctx.fill();
     }
     renderCells(ctx) {
-        
+        const numR = PARAMS.numResources;
         for (let i = 0; i < this.rows; i++) {
             for (let j = 0; j < this.cols; j++) {
                 const x = j * PARAMS.cellSize;
                 const y = i * PARAMS.cellSize;
                 const cell = this.grid[i][j];
-                ctx.fillStyle = `rgb(${Math.floor(cell[0] * 255)}, ${Math.floor(cell[1] * 255)}, ${Math.floor(cell[2] * 255)})`;
+                let r = 0, g = 0, b = 0;
+                for (let ri = 0; ri < numR; ri++) {
+                    const p = RESOURCE_PALETTE[ri % RESOURCE_PALETTE.length];
+                    r += cell[ri] * p[0];
+                    g += cell[ri] * p[1];
+                    b += cell[ri] * p[2];
+                }
+                ctx.fillStyle = `rgb(${Math.min(255, Math.floor(r * 255))}, ${Math.min(255, Math.floor(g * 255))}, ${Math.min(255, Math.floor(b * 255))})`;
                 ctx.fillRect(this.x + x, this.y + y, PARAMS.cellSize, PARAMS.cellSize);
             }
         }

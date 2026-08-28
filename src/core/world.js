@@ -8,8 +8,8 @@
 import {Forest} from './forest.js';
 import {Human} from './human.js';
 import {TradeManager} from './trademanager.js';
-import {distance} from './mathutil.js';
 import {EVENTS} from './events.js';
+import {SpatialGrid} from './spatialgrid.js';
 
 export class World {
     constructor(sim, {terrain = 'wavy'} = {}) {
@@ -20,6 +20,8 @@ export class World {
         // Construction order is RNG-significant: the forest draws its noise seeds before
         // any agent is created.
         this.forest = new Forest(sim, terrain);
+
+        this.grid = new SpatialGrid(sim.params.forestwidth, sim.params.forestheight, 50);
 
         this.humans = [];
         this.humanById = new Map();
@@ -37,6 +39,7 @@ export class World {
     addHuman(human) {
         this.humans.push(human);
         this.humanById.set(human.id, human);
+        this.grid.insert(human);
     }
 
     addHumanAt(x, y) {
@@ -47,11 +50,9 @@ export class World {
 
     /** Everyone inside `human`'s social reach, including `human` itself. */
     humansWithinReach(human) {
-        const within = [];
-        for (const other of this.humans) {
-            if (distance(other, human) < human.socialReach) within.push(other);
-        }
-        return within;
+        const result = this.grid.query(human.x, human.y, human.socialReach);
+        result.sort((a, b) => a.id - b.id);
+        return result;
     }
 
     /**
@@ -85,6 +86,7 @@ export class World {
             for (let r = 0; r < this.sim.params.numResources; r++) {
                 this.sim.ledger.recordLost(r, human.supply[r]);
             }
+            this.grid.remove(human);
             this.humanById.delete(human.id);
             this.humans.splice(i, 1);
             this.totalDeaths++;

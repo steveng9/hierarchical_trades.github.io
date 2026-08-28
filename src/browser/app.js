@@ -62,16 +62,18 @@ export class BrowserApp {
      * View state that should survive a reset (currently the trade-level display mode) is
      * captured before teardown and restored after.
      */
-    reset(paramOverrides = {}) {
+    reset(paramOverrides = {}, mechanicOverrides = {}) {
         const savedDisplayLevel = this.forestView?.tradeDisplayLevel ?? 0;
 
         this.graphs = [];
         this.clickCapableGraphs = [];
 
-        // The UI is forgiving where experiments are strict: unknown keys are ignored and
-        // out-of-range values are clamped with a warning, so a stale saved config or a
-        // slider out of sync with the schema cannot leave the user with a blank canvas.
-        this.sim = new Simulation({params: paramOverrides, strictParams: false, clampRanges: true});
+        this.sim = new Simulation({
+            params: paramOverrides,
+            mechanics: mechanicOverrides,
+            strictParams: false,
+            clampRanges: true,
+        });
         setSimulation(this.sim);
 
         const total = this.sim.params.numResources + this.sim.params.numAlternativeResources;

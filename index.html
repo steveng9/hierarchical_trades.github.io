@@ -20,6 +20,10 @@
                 <div class="parameter-section">
                     <h3>Sim</h3>
                     <div class="param-row">
+                        <span class="param-label">Seed</span>
+                        <input type="number" id="seed" min="0" step="1" style="width:80px">
+                    </div>
+                    <div class="param-row">
                         <span class="param-label">Speed (upd/draw)</span>
                         <input type="range" id="updatesPerDraw" min="10" max="500" step="10"
                                oninput="document.getElementById('updatesPerDraw_val').textContent=this.value">
@@ -31,7 +35,7 @@
                     <h3>Forest</h3>
                     <div class="param-row">
                         <span class="param-label">Num resources</span>
-                        <input type="range" id="numResources" min="1" max="3" step="1" value="3"
+                        <input type="range" id="numResources" min="1" max="8" step="1" value="3"
                                oninput="document.getElementById('numResources_val').textContent=this.value">
                         <span class="param-val" id="numResources_val"></span>
                     </div>
@@ -65,7 +69,7 @@
                     </div>
                     <div class="param-row">
                         <span class="param-label">Regen rate</span>
-                        <input type="range" id="resourceRegenRate" min="0.0001" max="0.005" step="0.0001"
+                        <input type="range" id="resourceRegenRate" min="0.0001" max="0.030" step="0.0001"
                                oninput="document.getElementById('resourceRegenRate_val').textContent=parseFloat(this.value).toFixed(4)">
                         <span class="param-val" id="resourceRegenRate_val"></span>
                     </div>
@@ -98,8 +102,20 @@
                         <span class="param-val" id="workEnergyCost_val"></span>
                     </div>
                     <div class="param-row">
+                        <span class="param-label">Production max</span>
+                        <input type="range" id="production_max" min="0.5" max="20" step="0.5"
+                               oninput="document.getElementById('production_max_val').textContent=parseFloat(this.value).toFixed(1)">
+                        <span class="param-val" id="production_max_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Max age (ticks)</span>
+                        <input type="range" id="maxHumanAge" min="100" max="10000" step="100"
+                               oninput="document.getElementById('maxHumanAge_val').textContent=this.value">
+                        <span class="param-val" id="maxHumanAge_val"></span>
+                    </div>
+                    <div class="param-row">
                         <span class="param-label">Repro. threshold</span>
-                        <input type="range" id="reproductionEnergyThreshold" min="80" max="100" step="1"
+                        <input type="range" id="reproductionEnergyThreshold" min="60" max="100" step="1"
                                oninput="document.getElementById('reproductionEnergyThreshold_val').textContent=this.value">
                         <span class="param-val" id="reproductionEnergyThreshold_val"></span>
                     </div>
@@ -122,6 +138,12 @@
             <div class="column">
                 <div class="parameter-section">
                     <h3>Trading</h3>
+                    <div class="param-row">
+                        <span class="param-label">Trade amount / invoc.</span>
+                        <input type="range" id="tradeAmountPerInvocation" min="0.1" max="10" step="0.1"
+                               oninput="document.getElementById('tradeAmountPerInvocation_val').textContent=parseFloat(this.value).toFixed(1)">
+                        <span class="param-val" id="tradeAmountPerInvocation_val"></span>
+                    </div>
                     <div class="check-row">
                         <input type="checkbox" id="fixTradeSurplusRatio">
                         <span>Fix surplus ratio</span>
@@ -195,6 +217,66 @@
 
         </div>
 
+        <!-- Mechanics selectors -->
+        <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
+            <h3>Mechanics</h3>
+            <div class="param-row">
+                <span class="param-label">Trade selection</span>
+                <select id="mechanic_tradeSelection" style="width:140px">
+                    <option value="invokeAll">invokeAll</option>
+                    <option value="bestRate">bestRate</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Metabolism</span>
+                <select id="mechanic_metabolism" style="width:140px">
+                    <option value="classic">classic</option>
+                    <option value="linear">linear</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Valuation</span>
+                <select id="mechanic_valuation" style="width:140px">
+                    <option value="needOverHoldings">needOverHoldings</option>
+                    <option value="linearNeedOverHoldings">linearNeedOverHoldings</option>
+                    <option value="needOnly">needOnly</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Pricing</span>
+                <select id="mechanic_pricing" style="width:140px">
+                    <option value="dispersionSpread">dispersionSpread</option>
+                    <option value="fixedMargin">fixedMargin</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Reproduction</span>
+                <select id="mechanic_reproduction" style="width:140px">
+                    <option value="asexualSplit">asexualSplit</option>
+                    <option value="sexualBlend">sexualBlend</option>
+                    <option value="none">none</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Lifecycle</span>
+                <select id="mechanic_lifecycle" style="width:140px">
+                    <option value="idleWindow">idleWindow</option>
+                    <option value="graceCounter">graceCounter</option>
+                    <option value="never">never</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Terrain</span>
+                <select id="mechanic_terrain" style="width:140px">
+                    <option value="wavy">wavy</option>
+                    <option value="randomResource">randomResource</option>
+                    <option value="stripes">stripes</option>
+                    <option value="slabs">slabs</option>
+                    <option value="uniform">uniform</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Saved configurations -->
         <details id="saved-configs-panel" open>
             <summary>Saved Configurations</summary>
@@ -210,6 +292,7 @@
         </details>
 
         <button type="button" onclick="reset()">Reset Simulation</button>
+        <button type="button" onclick="resetNewSeed()">Reset with New Seed</button>
         <button type="button" onclick="pause()">Pause / Play (Space)</button>
         <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
         <button type="button" onclick="clearHumanSelection()">Clear Selection</button>
@@ -254,6 +337,22 @@
             });
         }
 
+        function readMechanics() {
+            const m = {};
+            document.querySelectorAll('select[id^="mechanic_"]').forEach(sel => {
+                const key = sel.id.replace('mechanic_', '');
+                if (sel.value) m[key] = sel.value;
+            });
+            return m;
+        }
+
+        function writeMechanics(mechanics) {
+            document.querySelectorAll('select[id^="mechanic_"]').forEach(sel => {
+                const key = sel.id.replace('mechanic_', '');
+                sel.value = (mechanics && mechanics[key]) || sel.options[0].value;
+            });
+        }
+
         function saveConfig() {
             const nameInput = document.getElementById('config_name');
             const name = nameInput.value.trim();
@@ -262,7 +361,8 @@
             const config = {
                 name,
                 timestamp: new Date().toISOString(),
-                params: Object.assign({}, PARAMS)
+                params: Object.assign({}, PARAMS),
+                mechanics: readMechanics()
             };
             const configs = getSavedConfigs();
             const idx = configs.findIndex(c => c.name === name);
@@ -285,9 +385,9 @@
         function loadConfigByIndex(i) {
             const config = getSavedConfigs()[i];
             if (!config) return;
-            // Apply ALL saved params directly to PARAMS — works even if UI has changed
             Object.assign(PARAMS, config.params);
             initParamInputs();
+            writeMechanics(config.mechanics);
             reset();
         }
 

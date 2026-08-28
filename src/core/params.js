@@ -52,8 +52,8 @@ export const PARAM_SCHEMA = {
     cellSize:     {default: 25,   type: 'int',   min: 1, group: 'environment', doc: 'Forest cell size in px. Smaller = finer resource structure.'},
     forestwidth:  {default: 1100, type: 'int',   min: 1, group: 'environment', doc: 'World width in px.'},
     forestheight: {default: 600,  type: 'int',   min: 1, group: 'environment', doc: 'World height in px.'},
-    numResources: {default: 3,    type: 'int',   min: 1, max: 3, group: 'environment',
-        doc: 'Number of tradeable resources. Capped at 3 by the current concentration function.'},
+    numResources: {default: 3,    type: 'int',   min: 1, group: 'environment',
+        doc: 'Number of tradeable resources. The forest renderer blends palette colours additively.'},
     roughness:        {default: 1,   type: 'float', min: 0, group: 'environment', doc: 'Spatial frequency of the resource noise field.'},
     undulation_cutuff:{default: 0.4, type: 'float', min: 0, max: 1, group: 'environment',
         doc: 'Threshold below which concentration is zeroed. Higher = patchier, more separated regions. [sic: spelling preserved for config compatibility]'},
@@ -79,6 +79,8 @@ export const PARAM_SCHEMA = {
     social_reach_multiplier:     {default: 0.4, type: 'float', min: 0, group: 'agents', doc: 'Scales the right-skewed social-reach draw.'},
 
     // ---- trading ---------------------------------------------------------------------
+    tradeAmountPerInvocation: {default: 1, type: 'float', min: 0.1, group: 'trading',
+        doc: 'Units of resource moved per trade invocation. Higher = agents swap supply faster per tick.'},
     laborPerResourceUnit: {default: 0.2, type: 'float', min: 0, group: 'trading', doc: 'Labour consumed per unit of resource moved.'},
     fixTradeSurplusRatio: {default: true, type: 'bool', group: 'trading', doc: 'Hold Ain/Bin constant across trades.'},
     surplus_multiplier:   {default: 0.2, type: 'float', min: 0, group: 'trading',
@@ -90,6 +92,8 @@ export const PARAM_SCHEMA = {
     royalty: {default: 1, type: 'float', min: 0, group: 'trading', doc: 'Reserved. Currently unread by the kernel.'},
     min_rate_improvement: {default: 0, type: 'float', min: 0, max: 1, group: 'trading',
         doc: 'Fractional improvement over the best local rate required to justify building. 0 admits all. A competition-intensity axis.'},
+    tradeLoyaltyThreshold: {default: 0, type: 'float', min: 0, max: 1, group: 'trading',
+        doc: 'Switching cost for the bestRate trade-selection mechanic. 0 = pure rate optimization; higher = agents stick with their current trade unless a competitor is better by this fraction.'},
 
     // ---- hierarchy -------------------------------------------------------------------
     inventorPerpetualRoyalty: {default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',

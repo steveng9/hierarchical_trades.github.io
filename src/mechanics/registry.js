@@ -14,6 +14,7 @@ import {PRICING} from './pricing.js';
 import {REPRODUCTION} from './reproduction.js';
 import {LIFECYCLE} from './lifecycle.js';
 import {TERRAIN_GENERATORS} from './terrain.js';
+import {TRADE_SELECTION} from './tradeSelection.js';
 
 export const MECHANICS_REGISTRY = {
     metabolism:   METABOLISM,
@@ -21,7 +22,8 @@ export const MECHANICS_REGISTRY = {
     pricing:      PRICING,
     reproduction: REPRODUCTION,
     lifecycle:    LIFECYCLE,
-    terrain:      TERRAIN_GENERATORS,
+    terrain:        TERRAIN_GENERATORS,
+    tradeSelection: TRADE_SELECTION,
 };
 
 /** The historical rule set. Any deviation should be justified in the scenario file. */
@@ -31,7 +33,8 @@ export const DEFAULT_MECHANICS = Object.freeze({
     pricing:      'dispersionSpread',
     reproduction: 'asexualSplit',
     lifecycle:    'idleWindow',
-    terrain:      'wavy',
+    terrain:        'wavy',
+    tradeSelection: 'invokeAll',
 });
 
 /**
