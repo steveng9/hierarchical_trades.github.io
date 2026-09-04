@@ -89,6 +89,7 @@ export class TradeDataView {
             {label: "Volume",  x: px + 340},
             {label: "Supply",  x: px + 400},
             {label: "Mgrs",    x: px + 640},
+            {label: "Gen/100", x: px + 700},
         ];
 
         // Column headers
@@ -166,6 +167,8 @@ export class TradeDataView {
 
             ctx.fillText(`${trade.managers.size}`,                                        cols[7].x, rowY);
 
+            ctx.fillText(`${(trade.lifespan() / 100).toFixed(1)}`,                        cols[8].x, rowY);
+
             row++;
         }
 
@@ -210,6 +213,7 @@ export class TradeDataView {
             {label: "Volume",  x: px + 480},
             {label: "Supply",  x: px + 600},
             {label: "Mgrs",    x: px + 700},
+            {label: "Gen/100", x: px + 760},
         ];
 
         ctx.font = "11px monospace";
@@ -287,6 +291,8 @@ export class TradeDataView {
                 ctx.fillText(supplyStr || "--",             hierCols[8].x, rowY);
 
                 ctx.fillText(`${trade.managers.size}`,      hierCols[9].x, rowY);
+
+                ctx.fillText(`${(trade.lifespan() / 100).toFixed(1)}`, hierCols[10].x, rowY);
 
                 hierRow++;
             }

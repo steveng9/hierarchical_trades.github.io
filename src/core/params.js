@@ -40,8 +40,8 @@ export const PARAM_SCHEMA = {
         doc: 'Draw each agent\'s social-reach circle.'},
     margin:           {default: 20,   type: 'int', group: 'display', affectsDynamics: false, doc: 'Canvas margin in px.'},
     leftpanelWidth:   {default: 450,  type: 'int', group: 'display', affectsDynamics: false, doc: 'Left UI column width.'},
-    rightpanelwidth:  {default: 750,  type: 'int', group: 'display', affectsDynamics: false, doc: 'Right UI column width.'},
-    canvaswidth:      {default: 1240, type: 'int', group: 'display', affectsDynamics: false, doc: 'Canvas width.'},
+    rightpanelwidth:  {default: 840,  type: 'int', group: 'display', affectsDynamics: false, doc: 'Right UI column width.'},
+    canvaswidth:      {default: 1330, type: 'int', group: 'display', affectsDynamics: false, doc: 'Canvas width.'},
     updatesPerDraw:   {default: 10,   type: 'int', min: 1, group: 'display', affectsDynamics: false,
         doc: 'Simulation ticks per rendered frame. Interactive speed only; headless ignores it.'},
     reportingPeriod:  {default: 1,    type: 'int', min: 1, group: 'display', affectsDynamics: false, doc: 'Ticks between UI redraws.'},
@@ -60,6 +60,8 @@ export const PARAM_SCHEMA = {
     resourceDepletion:     {default: true,   type: 'bool',  group: 'environment', doc: 'Enable harvest depletion and regrowth.'},
     resourceDepletionRate: {default: 0.02,   type: 'float', min: 0, group: 'environment', doc: 'Concentration removed per unit harvested.'},
     resourceRegenRate:     {default: 0.0045, type: 'float', min: 0, group: 'environment', doc: 'Concentration restored per cell per tick, toward the baseline grid.'},
+    wrapped: {default: false, type: 'bool', group: 'environment',
+        doc: 'Treat the map as a torus (left edge adjacent to right, top adjacent to bottom) rather than a bounded plane. Affects where reproduction can place a child and every reach-based check (trade visibility, social neighbors), so lineages can drift all the way around the map and agents near opposite edges can see each other. Off by default to preserve historical, edge-bounded dynamics.'},
 
     // ---- agents ----------------------------------------------------------------------
     initialHumans:  {default: 500,     type: 'int',   min: 1, group: 'agents', doc: 'Founding population.'},

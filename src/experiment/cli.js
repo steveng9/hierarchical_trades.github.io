@@ -39,6 +39,7 @@ Options
   --terrain NAME      override the terrain generator
   --out DIR           results root (default: results)
   --metric KEY        metric for 'query'
+  --concurrency N     parallel worker threads (default: 1)
   --no-resume         re-run cells that already completed
   --quiet
 `;
@@ -55,6 +56,7 @@ const {values, positionals} = parseArgs({
         terrain:    {type: 'string'},
         out:        {type: 'string', default: 'results'},
         metric:     {type: 'string'},
+        concurrency:{type: 'string'},
         'no-resume':{type: 'boolean', default: false},
         quiet:      {type: 'boolean', default: false},
         help:       {type: 'boolean', default: false},
@@ -127,12 +129,13 @@ function cmdRun() {
     }
 }
 
-function cmdSweep() {
+async function cmdSweep() {
     const scenario = getScenario(values.scenario);
     const experiment = values.experiment ?? scenario.name;
     const store = storeFor(experiment);
     try {
-        const result = runSweep({
+        const concurrency = values.concurrency ? Number(values.concurrency) : 1;
+        const result = await runSweep({
             experiment,
             scenario: values.terrain ? {...scenario, terrain: values.terrain} : scenario,
             grid: scenario.grid ?? {},
@@ -143,6 +146,7 @@ function cmdSweep() {
             store,
             resume: !values['no-resume'],
             quiet: values.quiet,
+            concurrency,
         });
         process.exitCode = result.failed > 0 ? 1 : 0;
     } finally {
@@ -200,6 +204,9 @@ if (values.help || !command) {
         console.log(USAGE);
         process.exitCode = 2;
     } else {
-        fn();
+        Promise.resolve(fn()).catch(err => {
+            console.error(err);
+            process.exitCode = 1;
+        });
     }
 }

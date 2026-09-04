@@ -40,11 +40,32 @@ function boot() {
     console.log(`Hierarchical Trades — seed ${app.sim.params.seed}, fingerprint ${app.sim.paramsFingerprint}`);
 }
 
-/** Rebuild the simulation from the current control-panel values. */
-function reset() {
+/**
+ * Rebuild the simulation.
+ *
+ * `base` supplies every parameter that has no control-panel slider (e.g. `forestwidth`) — it
+ * defaults to the outgoing simulation's own resolved params, so a plain "Reset Simulation"
+ * click carries those non-UI values forward instead of silently reverting them to whatever
+ * the schema's default currently is. `loadFullParams` below passes a different `base` when a
+ * saved config should replace them instead.
+ */
+function reset(base) {
     setRunning(true);
-    app.reset(readParameterInputs(), readMechanicInputs());
+    base = base ?? app.sim?.params ?? defaultParams();
+    app.reset(Object.assign({}, base, readParameterInputs()), readMechanicInputs());
     writeParameterInputs(app.sim.params);
+}
+
+/**
+ * Rebuild the simulation from a full parameter set — e.g. a saved config — rather than from
+ * the previous run's values. Any key the set doesn't have (a config saved before that
+ * parameter existed) falls back to the schema default, not the outgoing simulation's value:
+ * this is the one path where NOT carrying the previous run's params forward is correct.
+ */
+function loadFullParams(params) {
+    const full = Object.assign({}, defaultParams(), params);
+    writeParameterInputs(full);
+    reset(full);
 }
 
 function resetNewSeed() {
@@ -72,8 +93,21 @@ function toggleSocialReach() {
     app.sim.params.show_social_reach = !app.sim.params.show_social_reach;
 }
 
-function clearHumanSelection() {
+/** "Clear Selection" button: drop every selection state across all views, not just humans. */
+function clearSelection() {
     app.datamanager?.humanDataView?.clearSelection();
+
+    const view = app.forestView;
+    if (view) {
+        view.selectedTrade = null;
+        view.tradeDisplayLevel = 0;
+    }
+    if (app.datamanager?.tradeDataView) {
+        app.datamanager.tradeDataView.selectedTrade = null;
+    }
+
+    const btn = document.getElementById('levelDisplayBtn');
+    if (btn) btn.textContent = 'Level Display: OFF';
 }
 
 /** Cycle the forest overlay: OFF -> L1 -> L2 -> ... -> OFF. */
@@ -100,8 +134,8 @@ Object.defineProperties(window, {
     app:    {get: () => app, configurable: true},
 });
 Object.assign(window, {
-    reset, resetNewSeed, pause, loadParameters, toggleSocialReach, clearHumanSelection, cycleTradeLevel,
-    gameEngine,
+    reset, resetNewSeed, pause, loadParameters, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
+    gameEngine, defaultParams,
 });
 
 if (document.readyState === 'loading') {

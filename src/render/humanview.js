@@ -2,7 +2,7 @@
  * Agent rendering. Extracted from `Human.draw`, which used to couple the agent model to a
  * canvas context.
  */
-import {PARAMS} from '../browser/context.js';
+import {PARAMS, gameEngine} from '../browser/context.js';
 
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -27,7 +27,10 @@ export function drawHuman(ctx, human, origin) {
         ctx.closePath();
     }
 
-    ctx.font = '12px monospace';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`H${human.id}`, origin.x + human.x + 8, origin.y + human.y);
+    const selected = gameEngine.automata?.datamanager?.humanDataView?.selectedHumans;
+    if (selected?.has(human.id)) {
+        ctx.font = '12px monospace';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`H${human.id}`, origin.x + human.x + 8, origin.y + human.y);
+    }
 }

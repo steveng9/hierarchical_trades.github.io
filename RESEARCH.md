@@ -312,6 +312,21 @@ Not a research group; a prerequisite. Without this there is no paper, only anecd
 - `min_rate_improvement: 0` means redundant trades proliferate; churn is controlled entirely by
   same-inventor dedup + deprecation. Sweeping it gives a clean **"competition intensity" axis** —
   cheap and worth one figure panel.
+- **`bestRate` trade selection is broken or over-selective.** Under `invokeAll`, a good
+  hierarchical sim sustains indefinitely. Switching to `bestRate` with identical params causes
+  the sim to limp and eventually die off. Hypothesis: agents become too picky about rates,
+  moving far less total volume through trades, ignoring hunger signals in favour of rate
+  optimality. Needs investigation — is the selection logic itself wrong, or does it just need
+  a fallback that says "invoke *something* if you're starving, even at a bad rate"?
+- **Conservation drift ("Lost R") is growing too fast.** The `core` probe's `drift` metric
+  should hover near zero (rounding noise over many ticks of accounting). Instead it grows
+  steadily, suggesting a real resource leak — resources being created or destroyed without
+  proper bookkeeping. Needs a systematic audit: trace every `supply[]` credit/debit,
+  `metabolize()` consumption, death cleanup, trade deprecation, and reproduction energy
+  transfer. Consider adding a true conservation check that independently sums all resources
+  in the sim (agent holdings + trade supply pools + terrain stocks) and compares against
+  cumulative production minus cumulative consumption, so the reported number reflects actual
+  leaks rather than accounting-formula drift.
 
 ---
 
@@ -349,6 +364,16 @@ These are all the same instrumented run viewed through different columns.
 **Note:** the fiefdom question ("is this fief useful or waste?") is answerable per-tree, not
 just in aggregate — compute, for each hierarchy tree, the metabolic benefit delivered to its
 participants vs. the surplus it retained. Expect high variance; the distribution is the story.
+
+### 1b. Spatial advantage and role fitness
+
+Is it better to be a producer in the interior (high concentration, fast depletion) or at the
+edge (lower concentration, less competition)? Do laborers or producers accumulate more energy?
+Who reproduces more — the high-energy producer on rich ground, or the laborer who builds the
+norms that let everyone else trade? Decompose reproduction rate by role and by distance from
+resource-region boundaries. This extends the role decomposition above with a spatial and
+evolutionary dimension: if laborers reproduce less, their niche shrinks over time, which
+constrains how much institution-building the economy can afford.
 
 ---
 
@@ -426,13 +451,49 @@ should nucleate on borders — a clean, visual, very ALife-friendly result.)
 **Threads:**
 - **Map geometry as an experimental axis.** Already a lot to play with: `roughness`,
   `undulation_cutoff`, `cellSize`, and hand-authored layouts — islands, corridors, gradients,
-  checkerboards, one-resource-per-quadrant, ring worlds.
+  checkerboards, one-resource-per-quadrant, ring worlds. Beyond procedural terrain, hand-craft
+  **controlled topology experiments** with deliberately shaped barren regions and bottlenecks:
+  - **Barren deserts** — large dead zones (zero or near-zero resource) of various shapes
+    (circular, bands, irregular) separating fertile regions. Do communities on opposite sides
+    develop independently? Does anyone colonise the desert, and if so, do they survive only by
+    trading with the fertile edges? A barren ring surrounding a fertile interior tests whether
+    institutions can form in isolation vs. requiring contact.
+  - **Narrow land bridges** — two rich regions connected by a corridor only a few cells wide.
+    Width is the experimental axis: at 1 cell wide, only one or two agents can physically
+    occupy the bridge; at 5–10 cells, a small community can form there. How does bridge width
+    affect (a) whether inter-community trade emerges at all, (b) the hierarchy depth of bridge
+    trades, (c) whether norms cascade across vs. stop at the bottleneck? Relates directly to
+    the hub-agent thread below.
+  - **Archipelago** — many small fertile islands in a barren sea, varying island size and
+    inter-island distance. At what island size is a community self-sustaining (all 3 resources
+    present)? At what inter-island distance do trade links form between islands? Does a
+    stepping-stone chain of islands produce relay trading (resource hopping island to island)?
+  - **Resource gradient** — a smooth linear gradient from all-red on the left to all-blue on
+    the right, with green uniform everywhere. Institutions should form along the gradient at
+    the points where red and blue agents first need each other. The gradient slope is the
+    experimental axis: steep = sharp boundary, shallow = gradual mixing.
+  - **Oasis** — a single rich patch surrounded by vast barren land with a thin resource trickle.
+    Tests whether a small isolated community can sustain hierarchy, and what minimum population
+    / resource density is needed for each level.
+  - **Labyrinth / maze** — fertile corridors separated by barren walls, forcing long-distance
+    resource flow through winding paths. Does hierarchy depth correlate with path length between
+    resource sources? Do institutions form at corridor junctions (the nodes of the maze graph)?
+  - **Asymmetric abundance** — one huge resource region adjacent to one tiny one. The small
+    region has something the large one needs. Does the small community punch above its weight
+    institutionally because it controls a scarce resource? Power asymmetry in trade networks.
 - **Village formation and branching.** Reproduction spawns children 5–30px away, so lineages
   drift. Over generations this *is* migration. Track settlement clusters as a spatial graph over
   time; watch them bud. Phylogeny of villages.
 - **Trade routes between villages.** Does inter-village trade emerge, and does it measurably
   improve metabolism and reproduction rate on both sides? Compare isolated vs. connected
   clusters.
+- **Resource fluidity and hop distance.** How many intermediaries does a resource pass through
+  before it reaches an agent who lacks it? An agent on a pure-green cell needs red — does it
+  come directly from a red-cell neighbor, or does it travel through a chain of traders? Does
+  hierarchy extend the hop distance (L2+ trades moving supply between trade pools)? Measurable
+  by tagging resource transfers and tracking origin-to-destination path length. If resources
+  travel farther in hierarchical economies, that is a concrete mechanism by which hierarchy
+  extends the division of labour beyond local reach.
 - **Network measures.** Build the agent–agent trade graph (`trade.trade_partners` already
   records normalized pairs with timestamps) and the trade–trade hierarchy graph. Then:
   degree distribution, clustering, betweenness, modularity/community detection,
@@ -441,6 +502,66 @@ should nucleate on borders — a clean, visual, very ALife-friendly result.)
   Hypothesis worth stating: *the Fiedler value predicts village branching before it happens.*
 - **Reproduction-driven movement.** Deliberately vary spawn distance to make migration a tunable
   axis; watch the frontier expand and institutions either follow or fail to.
+- **Distance-dependent trade friction.** Currently a trade that gains managers becomes a
+  fully-connected graph across the whole map — any participant can trade with any other within
+  reach, regardless of how far apart they are. Introduce a simple friction that makes
+  longer-distance invocations more expensive: the extra cost flows to the manager/trade supply
+  (carrying a trade over distance is work). This should (a) keep trade networks spatially
+  compact and realistic — short-range trades dominate, long-range ones are rare and costly,
+  (b) create a *reason* for hierarchy to exist at each scale (local L1s feed into regional L2s
+  that bridge the gap), and (c) **improve performance** by reducing the effective trade graph
+  from O(n²) fully-connected to something sparser. The mechanic must be simple and must not add
+  per-agent search cost — a distance multiplier on the spread, or a distance-proportional tax
+  deposited into `trade.supply[]`, not a shortest-path computation. The performance aim matters:
+  whatever we add should reduce asymptotic strain, not increase it.
+- **Trade awareness diffusion (word-of-mouth).** Currently a trade's reach is strictly
+  inventor circle ∪ manager circles. A popular trade in a large dense community can end up
+  confined to a small spatial pocket if it never recruits managers who happen to extend coverage.
+  Add a lightweight spreading mechanic: non-manager agents who participate in a trade can spread
+  awareness to neighbors within their own reach, with some probability per invocation or per
+  tick. This makes trade catchment grow organically through use, not just through the accident of
+  which managers get recruited. Combined with distance friction above, the two mechanics create a
+  tension: trades *want* to spread (word-of-mouth) but long-range participation is costly
+  (friction), so the emergent catchment is a smooth decay rather than a hard circle.
+  **Experimental dimensions this opens:** how does average reach affect trade spread? Low-reach
+  producers vs. high-reach producers? Laborers vs. producers vs. managers with different reach
+  distributions? How does community health change as a function of these? The `socialReach`
+  trait is already heritable with mutation (6a), so these questions have an evolutionary
+  dimension for free.
+- **Inter-community hub agents and norm bridging.** When two dense communities are separated by
+  a resource boundary (e.g. a red-rich region adjacent to a blue-rich region), agents in the
+  gap between them are positioned to facilitate exchange of each region's scarce resource.
+  Several interrelated questions:
+  - **Hub topology.** Do bridge agents between communities become high-betweenness hubs in the
+    trade graph? When a single hub can't sustain the demanded volume, do *links form around the
+    hub* — i.e. does the bridge widen from one agent to a corridor of agents who collectively
+    serve the inter-community flow?
+  - **Hierarchy level and position.** Is trade level correlated with position between resource
+    hotspots? If a hub agent is mediating red↔blue exchange between regions scarce in the other,
+    does it need to work through higher-level trades to move sufficient volume, or are L1 trades
+    perfectly sufficient? Hypothesis: the volume demanded by two communities exceeds what a
+    single L1 trade can carry, so hierarchy emerges *at the bridge* to scale throughput — making
+    inter-community boundaries a nucleation site for depth, complementing the Group 3 candidate
+    claim about institutional depth at resource-region boundaries.
+  - **Norm cascading across community borders.** Currently, norms appear to stop spreading at
+    the boundary between touching communities — a trade popular in one cluster does not
+    propagate into the adjacent one, even when hub agents participate in it. The desired
+    behaviour: once a norm passes through a connecting hub agent, it should *cascade* into the
+    new community via that agent's local connections. This is closely related to the
+    **word-of-mouth diffusion** thread above — the spreading mechanic is the mechanism that
+    would enable cascading, and **distance friction** is the counterweight that prevents a
+    single norm from homogenising both communities. Together the three threads (friction,
+    word-of-mouth, hub bridging) form a coherent package: norms spread locally through use,
+    pay a cost for distance, and cross community boundaries via hub agents who seed them into
+    the new population.
+  - **Benefit vs. detriment of bridge trade level.** Once inter-community trade exists, is it
+    better carried by deep or shallow hierarchy? Deep trades move more volume but skim more
+    spread; shallow trades are cheaper but may bottleneck. Measure community welfare (metabolic
+    balance, population, energy) as a function of the level of the dominant bridge trade.
+  - **Map designs for this thread.** Two-island or dumbbell layouts (two resource-rich clusters
+    connected by a narrow corridor) make the hub dynamics legible. Also ring-world with
+    alternating resource bands, and the existing `randomResource` terrain at high roughness
+    (natural clustering).
 
 ---
 
@@ -516,6 +637,12 @@ Mengerian emergence-of-money result obtained for free.
   natural next step — does a *fiat* pseudo-product emerge, or does money have to be edible here?
 - Is the money resource the most abundant, the most evenly distributed, or the most *dispersed
   in valuation*? Menger predicts saleability; this sim can adjudicate.
+- **Abundance vs. scarcity as a driver of tradedness.** Does the most abundant resource get
+  traded most (because it is available to offer), or the scarcest (because demand for it is
+  highest)? Decompose trade volume and active-trade count by resource, and correlate with
+  total concentration in the landscape. If scarce resources attract more institutional
+  infrastructure, that speaks to whether norms form around *need* or around *availability* —
+  which matters for the convention-vs-commons framing.
 
 ---
 
@@ -537,7 +664,27 @@ generated**, with one exception.
 | Varying `numResources` | Defer to a Substack post. `numResources = 2` is a useful *debugging* configuration, though: hierarchy dynamics become legible by hand |
 | Parent location / migration | Belongs to Group 3, not here |
 
-### 6a. The one evolutionary result that is already free — *do this in Paper 1*
+### 6a. Energy-dependent production
+Currently, the only consequence of low energy is inability to reproduce (below
+`reproductionEnergyThreshold`). Production output and labor capacity are flat regardless of an
+agent's energy state. This means an agent running on empty produces just as much as a
+well-fed one — the only penalty is demographic.
+
+Make production or labor output scale with current energy. The simplest version: a multiplier
+on `production_max` or `laborPerCycle` that drops as energy falls (e.g. linear in
+`energy / maxHumanEnergy`, or a threshold below which output degrades). This creates a
+**feedback loop**: poor diet → low energy → low production → less to trade → even lower energy.
+Trading and dietary diversity become load-bearing for *individual* productivity, not just
+reproduction. The community-level consequence is that non-trading populations don't just fail
+to grow — they actively decline in output, making the difference between trading and non-trading
+economies visible in per-agent metrics, not only in demographics.
+
+**Experimental value:** re-run the hierarchy-depth sweep with this mechanic on. If hierarchy
+improves dietary diversity (via broader resource circulation), the productivity feedback should
+amplify the welfare gap between deep and shallow economies — making Thesis C's measurement
+sharper.
+
+### 6b. The one evolutionary result that is already free — *do this in Paper 1*
 Heritable `socialReach` and `productivity` with mutation already exist. Track their joint
 distribution over time, hierarchy on vs. off.
 

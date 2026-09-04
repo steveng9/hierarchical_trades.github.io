@@ -8,7 +8,7 @@
     <script type="module" src="./src/browser/main.js"></script>
 </head>
 <body>
-    <canvas id="gameWorld" width="1260" height="2600"></canvas>
+    <canvas id="gameWorld" width="1330" height="3190"></canvas>
     <div id="controlPanel">
         <div id="db" class="db-status">Database</div>
 
@@ -25,7 +25,7 @@
                     </div>
                     <div class="param-row">
                         <span class="param-label">Speed (upd/draw)</span>
-                        <input type="range" id="updatesPerDraw" min="10" max="500" step="10"
+                        <input type="range" id="updatesPerDraw" min="1" max="500" step="10"
                                oninput="document.getElementById('updatesPerDraw_val').textContent=this.value">
                         <span class="param-val" id="updatesPerDraw_val"></span>
                     </div>
@@ -73,6 +73,10 @@
                                oninput="document.getElementById('resourceRegenRate_val').textContent=parseFloat(this.value).toFixed(4)">
                         <span class="param-val" id="resourceRegenRate_val"></span>
                     </div>
+                    <div class="check-row">
+                        <input type="checkbox" id="wrapped">
+                        <span>Wrapped (torus) world</span>
+                    </div>
                 </div>
 
                 <div class="parameter-section">
@@ -115,8 +119,8 @@
                     </div>
                     <div class="param-row">
                         <span class="param-label">Repro. threshold</span>
-                        <input type="range" id="reproductionEnergyThreshold" min="60" max="100" step="1"
-                               oninput="document.getElementById('reproductionEnergyThreshold_val').textContent=this.value">
+                        <input type="range" id="reproductionEnergyThreshold" min="60" max="100" step="0.2"
+                               oninput="document.getElementById('reproductionEnergyThreshold_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="reproductionEnergyThreshold_val"></span>
                     </div>
                     <div class="param-row">
@@ -190,13 +194,13 @@
                     <h3>Hierarchical Trades</h3>
                     <div class="param-row">
                         <span class="param-label">Min supply for hier.</span>
-                        <input type="range" id="minTradeSupplyForHierarchy" min="0" max="50" step="1"
+                        <input type="range" id="minTradeSupplyForHierarchy" min="0" max="10" step="1"
                                oninput="document.getElementById('minTradeSupplyForHierarchy_val').textContent=this.value">
                         <span class="param-val" id="minTradeSupplyForHierarchy_val"></span>
                     </div>
                     <div class="param-row">
                         <span class="param-label">Hier. cost mult.</span>
-                        <input type="range" id="hierarchicalTradeCostMultiplier" min="0.1" max="5" step="0.1"
+                        <input type="range" id="hierarchicalTradeCostMultiplier" min="0.0" max="5" step="0.1"
                                oninput="document.getElementById('hierarchicalTradeCostMultiplier_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="hierarchicalTradeCostMultiplier_val"></span>
                     </div>
@@ -295,7 +299,7 @@
         <button type="button" onclick="resetNewSeed()">Reset with New Seed</button>
         <button type="button" onclick="pause()">Pause / Play (Space)</button>
         <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
-        <button type="button" onclick="clearHumanSelection()">Clear Selection</button>
+        <button type="button" onclick="clearSelection()">Clear Selection</button>
         <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
 
         <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
@@ -318,6 +322,18 @@
 
     <script>
         const SAVED_CONFIGS_KEY = 'hierarchicalTrades_savedConfigs';
+
+        function download(filename, text) {
+            const blob = new Blob([text], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         function initParamInputs() {
             Object.keys(PARAMS).forEach(key => {
@@ -385,10 +401,12 @@
         function loadConfigByIndex(i) {
             const config = getSavedConfigs()[i];
             if (!config) return;
-            Object.assign(PARAMS, config.params);
-            initParamInputs();
             writeMechanics(config.mechanics);
-            reset();
+            // loadFullParams (not reset()) because a saved config should fully replace the
+            // running simulation's parameters — including ones with no slider, like
+            // forestwidth — rather than the normal reset() behaviour of carrying those
+            // non-UI values forward from whatever's currently running.
+            loadFullParams(config.params);
         }
 
         function deleteConfigByIndex(i) {
@@ -521,6 +539,7 @@
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                gameEngine.dragCapableGraphs.forEach(graph => graph.handleMouseDown(x, y, e.shiftKey));
                 if (x < canvas.width) {
                     if (e.shiftKey) {
                         isSelecting = true;
@@ -536,6 +555,7 @@
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                gameEngine.dragCapableGraphs.forEach(graph => graph.handleMouseMove(x, y));
                 if (x < canvas.width) {
                     if (isSelecting) gameEngine.selection.updateSelection(x, y);
                     if (isSpawning) gameEngine.selection.updateSpawn(x, y);
@@ -546,6 +566,7 @@
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                gameEngine.dragCapableGraphs.forEach(graph => graph.handleMouseUp(x, y));
                 if (isSelecting) gameEngine.selection.finishSelection(x, y);
                 if (isSpawning) gameEngine.selection.finishSpawn(x, y);
                 isSelecting = false;

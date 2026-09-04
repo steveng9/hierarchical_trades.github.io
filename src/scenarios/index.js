@@ -20,6 +20,7 @@ import {geography} from './g3-geography.js';
 import {succession, successionPolicyControl, depthPhaseDiagram} from './g4-succession.js';
 import {money} from './g5-money.js';
 import {evolution} from './g6-evolution.js';
+import {hierarchyDepthSweep} from './hierarchy-depth-sweep.js';
 
 export const SCENARIOS = {
     [baseline.name]:                baseline,
@@ -31,6 +32,7 @@ export const SCENARIOS = {
     [depthPhaseDiagram.name]:       depthPhaseDiagram,
     [money.name]:                   money,
     [evolution.name]:               evolution,
+    [hierarchyDepthSweep.name]:     hierarchyDepthSweep,
 };
 
 export function getScenario(name) {

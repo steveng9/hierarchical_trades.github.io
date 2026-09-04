@@ -20,7 +20,7 @@ export class VariableViewer {
         this.variableGetter = variableGetter;
         this.speedGetter = options.speedGetter || null;
         this.xSize = PARAMS.leftpanelWidth;
-        this.ySize = this.speedGetter ? 170 : 140;
+        this.ySize = this.speedGetter ? 205 : 140;
     }
 
     update() {}
@@ -60,8 +60,8 @@ export class VariableViewer {
         const speed = Math.max(1, this.speedGetter());
         const t = Math.min(1, Math.log10(speed) / LOG_MAX);
 
-        const cx = this.x + 340;
-        const cy = this.y + 125;
+        const cx = this.x + this.xSize - 55;   // snugged into the panel's right corner
+        const cy = this.y + 165;
         const r = 38;
 
         for (const seg of SEGMENTS) {

@@ -39,7 +39,9 @@ export class ForestView {
 
     draw(ctx) {
         this.renderCells(ctx);
+    }
 
+    drawTradeLines(ctx) {
         if (this.tradeDisplayLevel > 0) {
             this.drawLevelOverlay(ctx);
         } else if (this.selectedTrade) {

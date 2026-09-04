@@ -8,10 +8,27 @@
  *
  * Interface: tryReproduce(human, sim) -> Human|null
  */
+import {wrapDelta} from '../core/mathutil.js';
 
 /** Multiplicative Gaussian mutation, floored so a trait can never reach zero or invert. */
 function mutate(rng, value, rate) {
     return Math.max(0.001, value * (1 + rng.normal(0, rate)));
+}
+
+/**
+ * Constrain a spawn coordinate to the map: wrap it around the far edge when `params.wrapped`
+ * (so lineages can drift all the way around instead of piling up at the boundary), otherwise
+ * clamp to the edge as before.
+ */
+function place(coord, size, wrapped) {
+    if (wrapped) return ((coord % size) + size) % size;
+    return Math.max(0, Math.min(size - 1, coord));
+}
+
+/** Midpoint of two parents, short way around the seam when wrapped — plain averaging would
+ *  place it on the far side of the map for two parents near opposite edges. */
+function midpoint(a, b, size, wrapped) {
+    return a + (wrapped ? wrapDelta(b - a, size) : b - a) / 2;
 }
 
 export const REPRODUCTION = {
@@ -32,9 +49,10 @@ export const REPRODUCTION = {
             human.spendEnergy(childEnergy);
 
             const angle = sim.rng.next() * 2 * Math.PI;
-            const dist = sim.rng.float(5, 30);
-            const cx = Math.max(0, Math.min(params.forestwidth - 1, human.x + Math.cos(angle) * dist));
-            const cy = Math.max(0, Math.min(params.forestheight - 1, human.y + Math.sin(angle) * dist));
+            const maxSpawnDist = 5 + 500 * params.reproductionMutationRate;
+            const dist = sim.rng.float(5, maxSpawnDist);
+            const cx = place(human.x + Math.cos(angle) * dist, params.forestwidth, params.wrapped);
+            const cy = place(human.y + Math.sin(angle) * dist, params.forestheight, params.wrapped);
 
             const child = sim.world.createHuman({x: cx, y: cy, energy: childEnergy});
             child.socialReach = mutate(sim.rng, human.socialReach, params.reproductionMutationRate);
@@ -72,11 +90,12 @@ export const REPRODUCTION = {
             mate.spendEnergy(mate.totalEnergy() / 4);
 
             const angle = sim.rng.next() * 2 * Math.PI;
-            const dist = sim.rng.float(5, 30);
-            const midX = (human.x + mate.x) / 2;
-            const midY = (human.y + mate.y) / 2;
-            const cx = Math.max(0, Math.min(params.forestwidth - 1, midX + Math.cos(angle) * dist));
-            const cy = Math.max(0, Math.min(params.forestheight - 1, midY + Math.sin(angle) * dist));
+            const maxSpawnDist = 5 + 500 * params.reproductionMutationRate;
+            const dist = sim.rng.float(5, maxSpawnDist);
+            const midX = midpoint(human.x, mate.x, params.forestwidth, params.wrapped);
+            const midY = midpoint(human.y, mate.y, params.forestheight, params.wrapped);
+            const cx = place(midX + Math.cos(angle) * dist, params.forestwidth, params.wrapped);
+            const cy = place(midY + Math.sin(angle) * dist, params.forestheight, params.wrapped);
 
             const child = sim.world.createHuman({x: cx, y: cy, energy: contribution});
             child.socialReach = mutate(sim.rng, (human.socialReach + mate.socialReach) / 2, params.reproductionMutationRate);

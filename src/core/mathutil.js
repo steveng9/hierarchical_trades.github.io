@@ -17,9 +17,26 @@ export function meanAndStd(arr) {
     return {mean, std: Math.sqrt(variance)};
 }
 
-/** Euclidean distance between anything carrying {x, y}. */
-export function distance(a, b) {
-    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+/** The shorter of going straight there or wrapping around, on one axis of size `size`. */
+export function wrapDelta(d, size) {
+    d = ((d % size) + size) % size;
+    return d > size / 2 ? d - size : d;
+}
+
+/**
+ * Euclidean distance between anything carrying {x, y}.
+ *
+ * @param {{width: number, height: number}} [wrap]  when given, treats the world as a torus
+ *   (left edge adjacent to right, top to bottom) instead of a bounded plane.
+ */
+export function distance(a, b, wrap) {
+    let dx = a.x - b.x;
+    let dy = a.y - b.y;
+    if (wrap) {
+        dx = wrapDelta(dx, wrap.width);
+        dy = wrapDelta(dy, wrap.height);
+    }
+    return Math.sqrt(dx ** 2 + dy ** 2);
 }
 
 export function clamp(value, min, max) {

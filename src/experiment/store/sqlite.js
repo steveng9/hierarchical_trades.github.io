@@ -59,8 +59,8 @@ export class RunStore {
     constructor(dbPath) {
         fs.mkdirSync(path.dirname(dbPath), {recursive: true});
         this.db = new DatabaseSync(dbPath);
-        // WAL keeps concurrent sweep workers from blocking each other on writes.
         this.db.exec('PRAGMA journal_mode = WAL;');
+        this.db.exec('PRAGMA busy_timeout = 5000;');
         this.db.exec(SCHEMA);
         this.path = dbPath;
     }
@@ -124,6 +124,8 @@ export class RunStore {
     }
 
     close() {
+        if (this._closed) return;
+        this._closed = true;
         this.db.close();
     }
 }

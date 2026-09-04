@@ -50,9 +50,15 @@ export class World {
 
     /** Everyone inside `human`'s social reach, including `human` itself. */
     humansWithinReach(human) {
-        const result = this.grid.query(human.x, human.y, human.socialReach);
+        const result = this.grid.query(human.x, human.y, human.socialReach, this.wrapDims());
         result.sort((a, b) => a.id - b.id);
         return result;
+    }
+
+    /** World dimensions for toroidal distance, or null when `wrapped` is off. */
+    wrapDims() {
+        if (!this.sim.params.wrapped) return null;
+        return {width: this.sim.params.forestwidth, height: this.sim.params.forestheight};
     }
 
     /**

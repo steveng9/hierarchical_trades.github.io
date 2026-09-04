@@ -38,6 +38,7 @@ export class BrowserApp {
 
         this.graphs = [];
         this.clickCapableGraphs = [];
+        this.dragCapableGraphs = [];
         this.updateCount = 0;
         this.updatesPerSecond = 0;
         this.lastSecond = performance.now();
@@ -48,6 +49,7 @@ export class BrowserApp {
         this.selection = null;
         this.totalExistingActual = [];
         this.totalExistingExpected = [];
+        this.conservationDrift = [];
 
         setApp(this);
     }
@@ -67,6 +69,7 @@ export class BrowserApp {
 
         this.graphs = [];
         this.clickCapableGraphs = [];
+        this.dragCapableGraphs = [];
 
         this.sim = new Simulation({
             params: paramOverrides,
@@ -79,6 +82,7 @@ export class BrowserApp {
         const total = this.sim.params.numResources + this.sim.params.numAlternativeResources;
         this.totalExistingActual = Array(total).fill(0);
         this.totalExistingExpected = Array(total).fill(0);
+        this.conservationDrift = Array(total).fill(0);
 
         this.forestView = new ForestView(this.sim.world.forest);
         this.forestView.tradeDisplayLevel = savedDisplayLevel;
@@ -117,6 +121,8 @@ export class BrowserApp {
                     for (let r = 0; r < PARAMS.numResources; r++) {
                         this.totalExistingActual[r] = this.sim.ledger.actual(this.sim.world, r);
                         this.totalExistingExpected[r] = this.sim.ledger.expected(r);
+                        const check = this.sim.ledger.checkConservation(this.sim.world, r);
+                        this.conservationDrift[r] = check.drift;
                     }
                 }
             }
@@ -134,6 +140,7 @@ export class BrowserApp {
 
         this.forestView.draw(ctx);
         for (const human of this.sim.world.humans) drawHuman(ctx, human, this.forestView);
+        this.forestView.drawTradeLines(ctx);
 
         ctx.clearRect(0, panelsY, ctx.canvas.width, ctx.canvas.height - panelsY);
         for (const graph of this.graphs) graph.draw(ctx);

@@ -12,6 +12,7 @@ import {TradeDataView} from './tradeview.js';
 import {SelectionDataView} from './selectionview.js';
 import {TradeFlowView} from './tradeflowview.js';
 import {StatsPanel} from './statspanel.js';
+import {HistogramPanel} from './histogrampanel.js';
 
 export class DataManager {
     constructor(automata) {
@@ -47,6 +48,7 @@ export class DataManager {
             "produced R": gameEngine.total_produced[0].toFixed(2),
             "consumed R": gameEngine.total_consumed[0].toFixed(2),
             "lost R": gameEngine.total_lost[0].toFixed(2),
+            "drift R": gameEngine.conservation_drift[0]?.toFixed(6) ?? '0',
         }), {speedGetter: () => gameEngine.updatesPerSecond});
         gameEngine.addGraph(varViewer);
 
@@ -64,8 +66,14 @@ export class DataManager {
         gameEngine.addGraph(tfv);
         gameEngine.clickCapableGraphs.push(tfv);
 
-        // Stats graphs: 8 time-series panels below the flow view
-        gameEngine.addGraph(new StatsPanel(tfv));
+        // Stats graphs: time-series panels below the flow view, then population-distribution
+        // heatmaps below those.
+        const stats = new StatsPanel(tfv);
+        gameEngine.addGraph(stats);
+        gameEngine.dragCapableGraphs.push(stats);
+        const histograms = new HistogramPanel(stats);
+        gameEngine.addGraph(histograms);
+        gameEngine.dragCapableGraphs.push(histograms);
     }
 
     updateData() {

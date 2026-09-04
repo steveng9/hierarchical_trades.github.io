@@ -70,12 +70,26 @@ export class Forest {
         return this.grid[row][col][resourceIndex];
     }
 
-    /** Total concentration remaining in the world, per resource. A depletion probe. */
-    totalConcentration(resourceIndex) {
-        let total = 0;
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) total += this.grid[i][j][resourceIndex];
+    /**
+     * Sum current and undepleted-ceiling concentration per resource, restricted to `cells`
+     * (an iterable of [row, col] pairs) — or the whole grid when `cells` is omitted.
+     */
+    resourceTotals(numResources, cells) {
+        const now = Array(numResources).fill(0);
+        const max = Array(numResources).fill(0);
+        const accumulate = (row, col) => {
+            for (let r = 0; r < numResources; r++) {
+                now[r] += this.grid[row][col][r];
+                max[r] += this.baseGrid[row][col][r];
+            }
+        };
+        if (cells) {
+            for (const [row, col] of cells) accumulate(row, col);
+        } else {
+            for (let i = 0; i < this.rows; i++) {
+                for (let j = 0; j < this.cols; j++) accumulate(i, j);
+            }
         }
-        return total;
+        return {now, max};
     }
 }

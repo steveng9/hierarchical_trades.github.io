@@ -261,11 +261,12 @@ export class Trade {
      * region unlocked by a now-dead founder stays unlocked forever.
      */
     isWithinReach(human) {
+        const wrap = this.sim.world.wrapDims();
         const inventorCounts = this.inventor &&
             (this.sim.params.founderGhostReach || !this.inventor.removeFromWorld);
-        if (inventorCounts && distance(human, this.inventor) < this.inventor.socialReach) return true;
+        if (inventorCounts && distance(human, this.inventor, wrap) < this.inventor.socialReach) return true;
         for (const manager of this.managers) {
-            if (distance(human, manager) < manager.socialReach) return true;
+            if (distance(human, manager, wrap) < manager.socialReach) return true;
         }
         return false;
     }
@@ -281,9 +282,10 @@ export class Trade {
         const rA = this.resourcesIn.A;
         const rB = this.resourcesIn.B;
         const newMgrs = this.newManagers;
+        const wrap = this.sim.world.wrapDims();
         for (const human of humans) {
             if (human.removeFromWorld) continue;
-            if (!newMgrs.some(m => distance(human, m) < m.socialReach)) continue;
+            if (!newMgrs.some(m => distance(human, m, wrap) < m.socialReach)) continue;
             if (!human.my_trades[rA][rB].some(ti => ti.trade === this)) {
                 human.my_trades[rA][rB].push({trade: this, side: 'A'});
                 if (!this.isHierarchical) {

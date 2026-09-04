@@ -54,6 +54,7 @@ export const gameEngine = {
     get ctx()               { return app?.ctx ?? null; },
     get updatesPerSecond()  { return app?.updatesPerSecond ?? 0; },
     get clickCapableGraphs(){ return app?.clickCapableGraphs ?? []; },
+    get dragCapableGraphs() { return app?.dragCapableGraphs ?? []; },
     addGraph(graph)         { app?.addGraph(graph); },
 
     get selection()         { return app?.selection ?? null; },
@@ -63,6 +64,7 @@ export const gameEngine = {
     get total_lost()              { return sim?.ledger.lost ?? []; },
     get total_existing_actual()   { return app?.totalExistingActual ?? []; },
     get total_existing_expected() { return app?.totalExistingExpected ?? []; },
+    get conservation_drift()      { return app?.conservationDrift ?? []; },
 
     get automata() {
         if (!sim) return null;

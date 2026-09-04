@@ -15,6 +15,10 @@ import {distance} from './mathutil.js';
 import {Trade} from './trade.js';
 import {EVENTS} from './events.js';
 
+/** Rate of the Exponential draw behind `socialReach` (before `social_reach_multiplier`
+ * scales it). Exported so the reach histogram can derive a fixed axis ceiling from it. */
+export const SOCIAL_REACH_SHAPE = 0.01;
+
 export class Human {
     /**
      * @param {import('./simulation.js').Simulation} sim
@@ -33,7 +37,7 @@ export class Human {
         // ---------------------------------------------------------------------------
         const drawnX = sim.rng.int(params.forestwidth);
         const drawnY = sim.rng.int(params.forestheight);
-        const drawnReach = sim.rng.rightSkew(0.01) * params.social_reach_multiplier;
+        const drawnReach = sim.rng.rightSkew(SOCIAL_REACH_SHAPE) * params.social_reach_multiplier;
 
         this.id = options.id ?? sim.ids.next('human');
         this.x = options.x ?? drawnX;
@@ -51,6 +55,7 @@ export class Human {
         this.socialReach = options.reach ?? drawnReach;
         this.productivity = sim.rng.float(0, params.production_max);
 
+        this.numOffspring = 0;
         this.num_trades_built = 0;
         this.trades_built = Array.from({length: params.numResources}, () =>
             Array.from({length: params.numResources}, () => null)
@@ -161,6 +166,7 @@ export class Human {
     tryReproduce() {
         const child = this.sim.mechanics.reproduction.tryReproduce(this, this.sim);
         if (child) {
+            this.numOffspring++;
             this.sim.world.addHuman(child);
             this.sim.world.totalBirths++;
             this.sim.events.emit(EVENTS.HUMAN_BORN, {human: child, parent: this, tick: this.sim.tick});
