@@ -32,29 +32,34 @@ function midpoint(a, b, size, wrapped) {
 }
 
 /**
- * Give each founding agent a random phase within its first cooldown window.
- *
- * `lastReproductionTick` is seeded from `birthTick`, and every founding agent is created on
- * tick 0 — so a fixed cooldown releases the whole founding cohort on the *same* tick, and the
- * population reproduces in sharp synchronised pulses that are an artefact of how the run
- * starts rather than anything in the dynamics. Offsetting the start of the window spreads
- * that first opportunity uniformly across it.
- *
- * Only the first window is phased: `tryReproduce` overwrites `lastReproductionTick` on every
- * birth, so every later cooldown is full length. Agents born from an actual birth event are
- * skipped — they already carry a real, staggered `lastReproductionTick`, and shortening a
- * newborn's first wait would undercut the rate limit this variant exists to impose.
- *
- * Applied lazily here rather than in the `Human` constructor so the draw is taken only under
- * this variant: `asexualSplit` and the goldens captured under it consume no extra RNG.
+ * Spread of an agent's cooldown draw, as a fraction of the configured mean. Matches the house
+ * treatment of `maxHumanAge`, which is likewise drawn per agent rather than shared.
  */
-function phaseFoundingCooldown(human, sim) {
-    if (human.cooldownPhased) return;
-    human.cooldownPhased = true;
-    const full = sim.params.reproductionCooldownTicks;
-    if (full > 0 && human.parentIds.length === 0) {
-        human.lastReproductionTick -= sim.rng.int(full);
-    }
+export const COOLDOWN_SPREAD = 0.25;
+
+/**
+ * How long this agent waits before it may reproduce again.
+ *
+ * Drawn per agent, per birth event, rather than shared — because `tryReproduce` resets BOTH
+ * the parent and the newborn to the same tick. Under a single fixed cooldown that locks a
+ * parent and every one of its descendants into one phase permanently: births collapse onto a
+ * few ticks separated by exactly `reproductionCooldownTicks`, and the pulses sharpen over
+ * generations as each synchronised agent contributes another synchronised child. A per-event
+ * draw makes the phase random-walk instead, so lineages spread out on their own.
+ *
+ * Founders get a uniform draw across the whole window rather than a Gaussian around it. They
+ * are all created on tick 0, so their *first* opportunity has to be spread across the window
+ * to break the start-up cohort; every later draw is centred on the configured cooldown so the
+ * rate limit this variant exists to impose still holds.
+ *
+ * Taken here rather than in the `Human` constructor so the draw happens only under this
+ * variant: `asexualSplit` and the goldens captured under it consume no extra RNG.
+ */
+function drawCooldown(sim, {founder = false} = {}) {
+    const mean = sim.params.reproductionCooldownTicks;
+    if (mean <= 0) return 0;
+    if (founder) return sim.rng.float(0, mean);
+    return Math.max(1, sim.rng.normal(mean, mean * COOLDOWN_SPREAD));
 }
 
 export const REPRODUCTION = {
@@ -155,14 +160,20 @@ export const REPRODUCTION = {
     asexualSplitCooldown: {
         tryReproduce(human, sim) {
             const params = sim.params;
-            phaseFoundingCooldown(human, sim);
+            if (human.reproductionCooldown === undefined) {
+                human.reproductionCooldown = drawCooldown(sim, {founder: human.parentIds.length === 0});
+            }
             if (human.totalEnergy() < params.reproductionEnergyThreshold) return null;
-            if (sim.tick - human.lastReproductionTick < params.reproductionCooldownTicks) return null;
+            if (sim.tick - human.lastReproductionTick < human.reproductionCooldown) return null;
 
             const child = REPRODUCTION.asexualSplit.tryReproduce(human, sim);
             if (child) {
+                // Parent and child both restart here, so each needs its own fresh draw —
+                // giving them a shared one is precisely what produces synchronised lineages.
                 human.lastReproductionTick = sim.tick;
+                human.reproductionCooldown = drawCooldown(sim);
                 child.lastReproductionTick = sim.tick;
+                child.reproductionCooldown = drawCooldown(sim);
             }
             return child;
         },

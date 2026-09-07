@@ -66,3 +66,42 @@ test('describeMechanics lists every family with its default', () => {
         assert.ok(info.variants.includes(info.default), `${mechanic} default not among its variants`);
     }
 });
+
+/**
+ * Births must not collapse onto multiples of the cooldown.
+ *
+ * `asexualSplitCooldown` resets the parent AND the newborn to the same tick, so a single
+ * shared cooldown locks every lineage into one phase and the population reproduces in sharp
+ * pulses. Energy is abundant here so the cooldown is the binding constraint — the only
+ * regime in which birth timing is observable at all.
+ */
+test('reproduction:asexualSplitCooldown does not synchronise births', () => {
+    const COOLDOWN = 200, TICKS = 1200;
+    const sim = new Simulation({
+        params: {
+            seed: 3, initialHumans: 60, reproductionEnergyThreshold: 5,
+            production_max: 30, laborPerCycle: 5, maxHumanAge: 1000000,
+            reproductionCooldownTicks: COOLDOWN,
+        },
+        mechanics: {reproduction: 'asexualSplitCooldown'},
+        strictParams: false,
+    });
+
+    const births = new Array(TICKS).fill(0);
+    sim.events.on('human:born', () => { if (sim.tick < TICKS) births[sim.tick]++; });
+    for (let t = 0; t < TICKS; t++) sim.step();
+
+    const total = births.reduce((a, b) => a + b, 0);
+    assert.ok(total > 500, `need enough births to judge timing, got ${total}`);
+
+    // Fold onto the cooldown period: a lockstep population piles into a few phases.
+    const phase = new Array(COOLDOWN).fill(0);
+    births.forEach((n, t) => { phase[t % COOLDOWN] += n; });
+    const busiest = [...phase].sort((a, b) => b - a)
+        .slice(0, Math.ceil(COOLDOWN * 0.05)).reduce((a, b) => a + b, 0);
+    const share = busiest / total;
+
+    // 5% is perfectly uniform; the shared-cooldown bug put >40% here.
+    assert.ok(share < 0.15,
+        `births concentrated in the busiest 5% of cooldown phases: ${(100 * share).toFixed(1)}% (want <15%)`);
+});
