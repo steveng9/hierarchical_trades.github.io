@@ -6,7 +6,11 @@
  *
  *   - population: 'villages'   — `numVillages` founding communities, each a 2D Gaussian
  *                                 cluster, stationary except for reproduction drift.
- *   - terrain: 'regionalGroups' — resources [0, n) cluster on one side, [n, 2n) on the other.
+ *   - terrain: 'regionalGroupsWavy' — resources [0, n) cluster on one side, [n, 2n) on the
+ *                                 other, with the ordinary `wavy` texture inside each half so
+ *                                 a region still has good and poor ground rather than being
+ *                                 flat (which would leave agents no reason to prefer any
+ *                                 location or any neighbour's holdings within their own half).
  *   - metabolism: 'dietBalance' — reproduction stays reachable on a local half-diet, but
  *                                 production is halved until trade completes the diet.
  *   - reproduction: 'asexualSplitCooldown' — the second limiter, so a completed diet after
@@ -42,7 +46,7 @@ export const villages = {
         metabolism: 'dietBalance',
         reproduction: 'asexualSplitCooldown',
     },
-    terrain: 'regionalGroups',
+    terrain: 'regionalGroupsWavy',
     probes: ['core', 'hierarchy', 'spatial'],
     ticks: 4000,
     samplePeriod: 10,

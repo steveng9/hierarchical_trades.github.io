@@ -31,6 +31,32 @@ function midpoint(a, b, size, wrapped) {
     return a + (wrapped ? wrapDelta(b - a, size) : b - a) / 2;
 }
 
+/**
+ * Give each founding agent a random phase within its first cooldown window.
+ *
+ * `lastReproductionTick` is seeded from `birthTick`, and every founding agent is created on
+ * tick 0 — so a fixed cooldown releases the whole founding cohort on the *same* tick, and the
+ * population reproduces in sharp synchronised pulses that are an artefact of how the run
+ * starts rather than anything in the dynamics. Offsetting the start of the window spreads
+ * that first opportunity uniformly across it.
+ *
+ * Only the first window is phased: `tryReproduce` overwrites `lastReproductionTick` on every
+ * birth, so every later cooldown is full length. Agents born from an actual birth event are
+ * skipped — they already carry a real, staggered `lastReproductionTick`, and shortening a
+ * newborn's first wait would undercut the rate limit this variant exists to impose.
+ *
+ * Applied lazily here rather than in the `Human` constructor so the draw is taken only under
+ * this variant: `asexualSplit` and the goldens captured under it consume no extra RNG.
+ */
+function phaseFoundingCooldown(human, sim) {
+    if (human.cooldownPhased) return;
+    human.cooldownPhased = true;
+    const full = sim.params.reproductionCooldownTicks;
+    if (full > 0 && human.parentIds.length === 0) {
+        human.lastReproductionTick -= sim.rng.int(full);
+    }
+}
+
 export const REPRODUCTION = {
     /**
      * Historical default: asexual fission above an energy threshold.
@@ -122,10 +148,14 @@ export const REPRODUCTION = {
      * reproduction effectively continuous — see the diet-balance metabolism variant and
      * RESEARCH.md Group 3's half-diet/hub investigation. At `reproductionCooldownTicks = 0`
      * this is identical to `asexualSplit`.
+     *
+     * The child takes half the parent's energy exactly as in `asexualSplit` — this variant
+     * adds only the timing gate, and creates no energy.
      */
     asexualSplitCooldown: {
         tryReproduce(human, sim) {
             const params = sim.params;
+            phaseFoundingCooldown(human, sim);
             if (human.totalEnergy() < params.reproductionEnergyThreshold) return null;
             if (sim.tick - human.lastReproductionTick < params.reproductionCooldownTicks) return null;
 
