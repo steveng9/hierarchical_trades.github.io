@@ -114,6 +114,32 @@ export const TERRAIN_GENERATORS = {
         return grid;
     },
 
+    /**
+     * `numVillages` contiguous vertical regions, each carrying an equal-sized group of
+     * resources at full concentration. Pairs with the `villages` population placement: with
+     * `numVillages = 2` and `numResources = 2n`, resources `[0, n)` cluster on the left and
+     * `[n, 2n)` on the right, so each founding community starts with access to only its own
+     * local half of the diet — the setup for the half-diet/hub investigation
+     * (RESEARCH.md Group 3).
+     */
+    regionalGroups({rows, cols, params}) {
+        const v = params.numVillages;
+        const perVillage = Math.ceil(params.numResources / v);
+        const grid = [];
+        for (let i = 0; i < rows; i++) {
+            grid[i] = [];
+            for (let j = 0; j < cols; j++) {
+                const cell = new Array(params.numResources).fill(0);
+                const village = Math.min(v - 1, Math.floor((j / cols) * v));
+                const start = village * perVillage;
+                const end = Math.min(params.numResources, start + perVillage);
+                for (let r = start; r < end; r++) cell[r] = 1;
+                grid[i][j] = cell;
+            }
+        }
+        return grid;
+    },
+
     /** Uniform mixture everywhere. No specialisation, so no gains from trade: a null model. */
     uniform({rows, cols, params}) {
         const grid = [];

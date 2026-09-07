@@ -111,4 +111,30 @@ export const REPRODUCTION = {
     none: {
         tryReproduce() { return null; },
     },
+
+    /**
+     * Asexual fission with a cooldown: identical to `asexualSplit`, but an agent must also
+     * have waited `reproductionCooldownTicks` since its last birth event (its own, or the
+     * event that created it).
+     *
+     * Energy alone gates *whether* reproduction is possible; this adds *how often*. Needed
+     * once a completed diet (via trade) would otherwise make energy trivially abundant and
+     * reproduction effectively continuous — see the diet-balance metabolism variant and
+     * RESEARCH.md Group 3's half-diet/hub investigation. At `reproductionCooldownTicks = 0`
+     * this is identical to `asexualSplit`.
+     */
+    asexualSplitCooldown: {
+        tryReproduce(human, sim) {
+            const params = sim.params;
+            if (human.totalEnergy() < params.reproductionEnergyThreshold) return null;
+            if (sim.tick - human.lastReproductionTick < params.reproductionCooldownTicks) return null;
+
+            const child = REPRODUCTION.asexualSplit.tryReproduce(human, sim);
+            if (child) {
+                human.lastReproductionTick = sim.tick;
+                child.lastReproductionTick = sim.tick;
+            }
+            return child;
+        },
+    },
 };

@@ -79,16 +79,6 @@ function pause() {
     toggleRunning();
 }
 
-/**
- * Pull the control panel into the live parameter object.
- *
- * Kept for the inline `saveConfig()`, which calls this and then snapshots `PARAMS`.
- */
-function loadParameters() {
-    Object.assign(app.sim.params, readParameterInputs());
-    return app.sim.params;
-}
-
 function toggleSocialReach() {
     app.sim.params.show_social_reach = !app.sim.params.show_social_reach;
 }
@@ -134,8 +124,8 @@ Object.defineProperties(window, {
     app:    {get: () => app, configurable: true},
 });
 Object.assign(window, {
-    reset, resetNewSeed, pause, loadParameters, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
-    gameEngine, defaultParams,
+    reset, resetNewSeed, pause, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
+    gameEngine, defaultParams, readParameterInputs,
 });
 
 if (document.readyState === 'loading') {

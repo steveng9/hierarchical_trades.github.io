@@ -40,6 +40,12 @@
                         <span class="param-val" id="numResources_val"></span>
                     </div>
                     <div class="param-row">
+                        <span class="param-label">Cell size</span>
+                        <input type="range" id="cellSize" min="5" max="100" step="5"
+                               oninput="document.getElementById('cellSize_val').textContent=this.value">
+                        <span class="param-val" id="cellSize_val"></span>
+                    </div>
+                    <div class="param-row">
                         <span class="param-label">Roughness</span>
                         <input type="range" id="roughness" min="0" max="3" step="0.1"
                                oninput="document.getElementById('roughness_val').textContent=parseFloat(this.value).toFixed(1)">
@@ -76,6 +82,18 @@
                     <div class="check-row">
                         <input type="checkbox" id="wrapped">
                         <span>Wrapped (torus) world</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Num villages</span>
+                        <input type="range" id="numVillages" min="1" max="6" step="1"
+                               oninput="document.getElementById('numVillages_val').textContent=this.value">
+                        <span class="param-val" id="numVillages_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Village spread (px)</span>
+                        <input type="range" id="villageSpread" min="10" max="300" step="5"
+                               oninput="document.getElementById('villageSpread_val').textContent=this.value">
+                        <span class="param-val" id="villageSpread_val"></span>
                     </div>
                 </div>
 
@@ -119,7 +137,7 @@
                     </div>
                     <div class="param-row">
                         <span class="param-label">Repro. threshold</span>
-                        <input type="range" id="reproductionEnergyThreshold" min="60" max="100" step="0.2"
+                        <input type="range" id="reproductionEnergyThreshold" min="20" max="100" step="0.2"
                                oninput="document.getElementById('reproductionEnergyThreshold_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="reproductionEnergyThreshold_val"></span>
                     </div>
@@ -134,6 +152,18 @@
                         <input type="range" id="social_reach_multiplier" min="0.01" max="2" step="0.01"
                                oninput="document.getElementById('social_reach_multiplier_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="social_reach_multiplier_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Repro. cooldown (ticks)</span>
+                        <input type="range" id="reproductionCooldownTicks" min="0" max="1000" step="10"
+                               oninput="document.getElementById('reproductionCooldownTicks_val').textContent=this.value">
+                        <span class="param-val" id="reproductionCooldownTicks_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Diet well-fed share</span>
+                        <input type="range" id="dietWellFedShare" min="0" max="1" step="0.05"
+                               oninput="document.getElementById('dietWellFedShare_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="dietWellFedShare_val"></span>
                     </div>
                 </div>
             </div>
@@ -236,6 +266,7 @@
                 <select id="mechanic_metabolism" style="width:140px">
                     <option value="classic">classic</option>
                     <option value="linear">linear</option>
+                    <option value="dietBalance">dietBalance</option>
                 </select>
             </div>
             <div class="param-row">
@@ -257,6 +288,7 @@
                 <span class="param-label">Reproduction</span>
                 <select id="mechanic_reproduction" style="width:140px">
                     <option value="asexualSplit">asexualSplit</option>
+                    <option value="asexualSplitCooldown">asexualSplitCooldown</option>
                     <option value="sexualBlend">sexualBlend</option>
                     <option value="none">none</option>
                 </select>
@@ -276,7 +308,15 @@
                     <option value="randomResource">randomResource</option>
                     <option value="stripes">stripes</option>
                     <option value="slabs">slabs</option>
+                    <option value="regionalGroups">regionalGroups</option>
                     <option value="uniform">uniform</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Population</span>
+                <select id="mechanic_population" style="width:140px">
+                    <option value="uniform">uniform</option>
+                    <option value="villages">villages</option>
                 </select>
             </div>
         </div>
@@ -373,11 +413,19 @@
             const nameInput = document.getElementById('config_name');
             const name = nameInput.value.trim();
             if (!name) { alert('Please enter a name for this config.'); return; }
-            loadParameters();
+            // Snapshot the DOM's current values layered over the running sim's full param
+            // set (for non-UI keys like forestwidth) WITHOUT mutating the live simulation.
+            // Writing slider values straight into the running sim's params (the old
+            // loadParameters()-based path) corrupts it the moment a structural param like
+            // numResources changes without a full Reset: every per-resource array already
+            // allocated (human.metabolism, forest grid cells, ...) stays sized for the old
+            // value, so the sim keeps ticking against mismatched array lengths and the tab
+            // hangs. A saved config should reflect "what if I hit Reset right now", not
+            // silently apply itself first.
             const config = {
                 name,
                 timestamp: new Date().toISOString(),
-                params: Object.assign({}, PARAMS),
+                params: Object.assign({}, PARAMS, readParameterInputs()),
                 mechanics: readMechanics()
             };
             const configs = getSavedConfigs();

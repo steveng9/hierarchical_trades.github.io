@@ -17,6 +17,7 @@ import {baseline} from './baseline.js';
 import {valueAccounting} from './g1-value-accounting.js';
 import {enforcement} from './g2-enforcement.js';
 import {geography} from './g3-geography.js';
+import {villages} from './g3-villages.js';
 import {succession, successionPolicyControl, depthPhaseDiagram} from './g4-succession.js';
 import {money} from './g5-money.js';
 import {evolution} from './g6-evolution.js';
@@ -27,6 +28,7 @@ export const SCENARIOS = {
     [valueAccounting.name]:         valueAccounting,
     [enforcement.name]:             enforcement,
     [geography.name]:               geography,
+    [villages.name]:                villages,
     [succession.name]:              succession,
     [successionPolicyControl.name]: successionPolicyControl,
     [depthPhaseDiagram.name]:       depthPhaseDiagram,

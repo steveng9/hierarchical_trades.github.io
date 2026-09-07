@@ -26,7 +26,10 @@ export class World {
         this.humans = [];
         this.humanById = new Map();
         for (let i = 0; i < sim.params.initialHumans; i++) {
-            this.addHuman(this.createHuman());
+            // The default 'uniform' population mechanic returns null, so `Human` draws its
+            // own position exactly as before — RNG stream and goldens untouched.
+            const placement = sim.mechanics.population.place(i, sim);
+            this.addHuman(this.createHuman(placement ? {x: placement.x, y: placement.y} : {}));
         }
 
         this.trademanager = new TradeManager(sim);
