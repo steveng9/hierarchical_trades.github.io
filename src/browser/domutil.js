@@ -43,10 +43,43 @@ export function readParameterInputs() {
  * construction instead of by maintenance (it reproduces all 32 of them exactly today).
  */
 function readoutDecimals(input) {
-    const step = input.getAttribute('step');
+    // `data-step` holds the authored step when `fitRange` has had to relax the live one to
+    // "any"; the readout width must keep following what the panel was designed to show.
+    const step = input.dataset.step || input.getAttribute('step');
     if (!step || step === 'any') return 0;
     const dot = step.indexOf('.');
     return dot === -1 ? 0 : step.length - dot - 1;
+}
+
+/**
+ * Widen an input's bounds so it can actually sit on `value`.
+ *
+ * A range input silently clamps to `min`/`max` and snaps to `step`, so a config carrying a
+ * value the authored range cannot express leaves the control parked somewhere else entirely
+ * while the readout reports the truth — the panel then contradicts itself, which is exactly
+ * the mismatch this is here to prevent. The authored bounds are a convenient drag range, not
+ * a constraint (the schema validates the real limits), so stretching them to admit a value
+ * the simulation is genuinely running loses nothing.
+ *
+ * Relaxing `step` to "any" is likewise only about representability: the authored value is
+ * kept in `data-step` so the readout's precision, and any later re-tightening, still follow it.
+ */
+function fitRange(input, value) {
+    const min = parseFloat(input.getAttribute('min'));
+    const max = parseFloat(input.getAttribute('max'));
+    if (Number.isFinite(min) && value < min) input.min = String(value);
+    if (Number.isFinite(max) && value > max) input.max = String(value);
+
+    const step = input.getAttribute('step');
+    if (!step || step === 'any') return;
+    const stepSize = parseFloat(step);
+    if (!Number.isFinite(stepSize) || stepSize <= 0) return;
+    const base = Number.isFinite(parseFloat(input.getAttribute('min'))) ? parseFloat(input.getAttribute('min')) : 0;
+    const offset = (value - base) / stepSize;
+    if (Math.abs(offset - Math.round(offset)) > 1e-9) {
+        if (!input.dataset.step) input.dataset.step = step;
+        input.step = 'any';
+    }
 }
 
 /**
@@ -66,12 +99,13 @@ export function writeParameterInputs(params) {
             input.checked = Boolean(value);
             return;
         }
+        if (typeof value === 'number' && Number.isFinite(value)) fitRange(input, value);
         input.value = value;
 
-        // The readout is taken from `params`, not from `input.value`: a range input silently
-        // snaps to its `step` and clamps to its `min`/`max`, so whenever the panel cannot
-        // represent a value exactly the control is only an approximation and the readout is
-        // the one place the true number can still be shown.
+        // The readout is taken from `params`, not from `input.value`. `fitRange` above makes
+        // the control able to sit on the real value in every case it can, but this stays the
+        // authoritative source: if a bound ever cannot be stretched, the number beside the
+        // slider is still the one the simulation is actually running.
         const readout = document.getElementById(key + '_val');
         if (readout && typeof value === 'number' && Number.isFinite(value)) {
             readout.textContent = value.toFixed(readoutDecimals(input));

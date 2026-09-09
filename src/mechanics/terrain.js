@@ -149,7 +149,30 @@ export const TERRAIN_GENERATORS = {
         return grid;
     },
 
-    /** `regionalGroups` with the `wavy` texture inside each region. See `regionalResources`. */
+    /**
+     * Split the world into `numVillages` regions, each owning a disjoint 1/nth of the
+     * resources, and give every cell within a region ONE resource drawn at random from that
+     * region's group — the `randomResource` texture, restricted to the local group.
+     *
+     * A cell holding an equal share of every regional resource is what made this generator
+     * render as flat white and gave agents inside a region nothing to trade for: with the
+     * same bundle underfoot everywhere, local valuation dispersion is zero and only the
+     * region *boundary* carries any surplus. One pure resource per cell restores the
+     * within-region gradient while preserving the property the design rests on — region 1
+     * still holds only its 1/nth of the world's resources, region 2 the next 1/nth, and so on.
+     */
+    regionalGroups(ctx) {
+        const {rows, cols, params, rng} = ctx;
+        return buildRegionalGrid(rows, cols, params, (cell, i, j, start, end) => {
+            cell[start + rng.int(end - start)] = 1;
+        });
+    },
+
+    /**
+     * `regionalGroups` with the smooth `wavy` texture inside each region instead of one pure
+     * resource per cell. Soft gradients rather than maximal patchiness; used by the
+     * `g3-villages` scenario.
+     */
     regionalGroupsWavy(ctx) {
         const {rows, cols, params, rng} = ctx;
         // Seeds are drawn first, one per resource, matching `wavy`'s construction order.
@@ -162,22 +185,9 @@ export const TERRAIN_GENERATORS = {
         });
     },
 
-    /** `regionalGroups` with the `randomResource` texture inside each region. */
+    /** Explicit spelling of `regionalGroups`, kept so configs naming it still resolve. */
     regionalGroupsRandom(ctx) {
-        const {rows, cols, params, rng} = ctx;
-        return buildRegionalGrid(rows, cols, params, (cell, i, j, start, end) => {
-            cell[start + rng.int(end - start)] = 1;
-        });
-    },
-
-    /**
-     * Back-compatible alias for `regionalGroupsWavy`.
-     *
-     * Saved configs and `configs/*.json` written before the split store this name; keeping it
-     * resolvable means they still load. New work should name a variant explicitly.
-     */
-    regionalGroups(ctx) {
-        return TERRAIN_GENERATORS.regionalGroupsWavy(ctx);
+        return TERRAIN_GENERATORS.regionalGroups(ctx);
     },
 
     /** Uniform mixture everywhere. No specialisation, so no gains from trade: a null model. */

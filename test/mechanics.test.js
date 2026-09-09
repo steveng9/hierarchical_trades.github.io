@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {resolveMechanics, describeMechanics, MECHANICS_REGISTRY, DEFAULT_MECHANICS} from '../src/mechanics/registry.js';
 import {Simulation} from '../src/core/simulation.js';
 import {MATCHING} from '../src/mechanics/matching.js';
+import {TERRAIN_GENERATORS} from '../src/mechanics/terrain.js';
+import {Random} from '../src/core/rng.js';
 
 const small = {seed: 5, initialHumans: 100, forestwidth: 400, forestheight: 300};
 
@@ -134,4 +136,36 @@ test('reproduction:asexualSplitCooldown does not synchronise births', () => {
     // 5% is perfectly uniform; the shared-cooldown bug put >40% here.
     assert.ok(share < 0.15,
         `births concentrated in the busiest 5% of cooldown phases: ${(100 * share).toFixed(1)}% (want <15%)`);
+});
+
+/**
+ * `regionalGroups` must texture each region, not flood it.
+ *
+ * Filling every resource in a region's group with a flat 1 makes each cell identical, which
+ * renders as solid white and leaves agents inside a region with no valuation dispersion to
+ * trade on. Each cell must instead hold ONE resource drawn from its own region's group, so
+ * the regions stay disjoint (region k owns only its 1/nth of the world's resources) while the
+ * interior stays patchy.
+ */
+test('terrain:regionalGroups gives each cell one resource from its own region group', () => {
+    const params = {numVillages: 2, numResources: 6, cellSize: 10, roughness: 1, undulation_cutuff: 0.5};
+    const rows = 8, cols = 12;
+    const grid = TERRAIN_GENERATORS.regionalGroups({rows, cols, params, rng: new Random(7)});
+
+    const seen = [new Set(), new Set()];
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            const nonzero = grid[i][j].map((v, r) => [v, r]).filter(([v]) => v > 0);
+            assert.equal(nonzero.length, 1, `cell ${i},${j} holds ${nonzero.length} resources, want exactly 1`);
+            const [[value, resource]] = nonzero;
+            assert.equal(value, 1, 'the single resource should be pure');
+            seen[j < cols / 2 ? 0 : 1].add(resource);
+        }
+    }
+
+    // The halves must partition the resource set: no resource may appear in both regions.
+    for (const resource of seen[0]) {
+        assert.ok(!seen[1].has(resource), `resource ${resource} leaked across the region boundary`);
+    }
+    assert.ok(seen[0].size > 1 && seen[1].size > 1, 'each region should use more than one of its resources');
 });
