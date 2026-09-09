@@ -63,9 +63,15 @@ function reset(base) {
  * this is the one path where NOT carrying the previous run's params forward is correct.
  */
 function loadFullParams(params) {
+    setRunning(true);
+    // Built straight from the config rather than via `reset()`, which layers
+    // `readParameterInputs()` on top of its base. A range input snaps to its `step` and
+    // clamps to its `min`/`max`, so writing the config into the panel and reading it back
+    // rewrites every value the panel cannot represent exactly — which is how loading a
+    // config could leave the simulation running numbers that config never contained.
     const full = Object.assign({}, defaultParams(), params);
-    writeParameterInputs(full);
-    reset(full);
+    app.reset(full, readMechanicInputs());
+    writeParameterInputs(app.sim.params);
 }
 
 function resetNewSeed() {
@@ -125,7 +131,7 @@ Object.defineProperties(window, {
 });
 Object.assign(window, {
     reset, resetNewSeed, pause, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
-    gameEngine, defaultParams, readParameterInputs,
+    gameEngine, defaultParams, readParameterInputs, writeParameterInputs,
 });
 
 if (document.readyState === 'loading') {

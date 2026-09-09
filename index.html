@@ -25,7 +25,9 @@
                     </div>
                     <div class="param-row">
                         <span class="param-label">Speed (upd/draw)</span>
-                        <input type="range" id="updatesPerDraw" min="1" max="500" step="10"
+                        <!-- step="1": with min="1" step="10" the legal positions were 1, 11, 21, ...,
+                             so the default of 10 snapped to 11 and the sim silently ran at 11. -->
+                        <input type="range" id="updatesPerDraw" min="1" max="500" step="1"
                                oninput="document.getElementById('updatesPerDraw_val').textContent=this.value">
                         <span class="param-val" id="updatesPerDraw_val"></span>
                     </div>
@@ -320,7 +322,8 @@
                     <option value="randomResource">randomResource</option>
                     <option value="stripes">stripes</option>
                     <option value="slabs">slabs</option>
-                    <option value="regionalGroups">regionalGroups</option>
+                    <option value="regionalGroupsWavy">regionalGroupsWavy</option>
+                    <option value="regionalGroupsRandom">regionalGroupsRandom</option>
                     <option value="uniform">uniform</option>
                 </select>
             </div>
@@ -394,22 +397,12 @@
             URL.revokeObjectURL(url);
         }
 
+        // Delegates so the panel has exactly one writer. The local copy this replaced
+        // formatted every readout as toFixed(3)-trimmed regardless of the slider's own
+        // step, so a value's displayed precision changed the first time you dragged its
+        // slider; writeParameterInputs derives the width from the step instead.
         function initParamInputs() {
-            Object.keys(PARAMS).forEach(key => {
-                const input = document.getElementById(key);
-                if (!input) return;
-                if (input.type === 'checkbox') {
-                    input.checked = PARAMS[key];
-                } else {
-                    input.value = PARAMS[key];
-                    // Set the value display span directly from PARAMS (avoids slider snap discrepancy)
-                    const valSpan = document.getElementById(key + '_val');
-                    if (valSpan) {
-                        const v = PARAMS[key];
-                        valSpan.textContent = Number.isInteger(v) ? v : parseFloat(v).toFixed(3).replace(/\.?0+$/, '');
-                    }
-                }
-            });
+            writeParameterInputs(PARAMS);
         }
 
         function readMechanics() {

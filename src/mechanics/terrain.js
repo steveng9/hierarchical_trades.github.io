@@ -48,6 +48,41 @@ function cellConcentration(j, i, seed, params) {
     return average(samples);
 }
 
+/**
+ * Shared skeleton of the `regionalGroups*` family.
+ *
+ * Splits the world into `numVillages` contiguous vertical regions and gives each an
+ * equal-sized, disjoint group of resources: with `numVillages = 2` and `numResources = 2n`,
+ * resources `[0, n)` belong to the left region and `[n, 2n)` to the right. Pairs with the
+ * `villages` population placement, so each founding community starts with access to only its
+ * own local half of the diet — the setup for the half-diet/hub investigation (RESEARCH.md
+ * Group 3).
+ *
+ * `fill(cell, i, j, start, end)` writes the concentrations for resources `[start, end)` — the
+ * region's own group — and is the only thing the variants differ in. Everything outside that
+ * range stays 0, which is what makes the halves complementary. Filling `[start, end)` with a
+ * flat 1 would make every cell in a region identical, erasing the within-region gradient that
+ * gives agents any reason to move or to value one neighbour's holdings over another's; the
+ * registered variants therefore texture the region instead.
+ */
+function buildRegionalGrid(rows, cols, params, fill) {
+    const v = params.numVillages;
+    const perVillage = Math.ceil(params.numResources / v);
+    const grid = [];
+    for (let i = 0; i < rows; i++) {
+        grid[i] = [];
+        for (let j = 0; j < cols; j++) {
+            const cell = new Array(params.numResources).fill(0);
+            const village = Math.min(v - 1, Math.floor((j / cols) * v));
+            const start = village * perVillage;
+            const end = Math.min(params.numResources, start + perVillage);
+            fill(cell, i, j, start, end);
+            grid[i][j] = cell;
+        }
+    }
+    return grid;
+}
+
 export const TERRAIN_GENERATORS = {
     /** Historical default. Smooth, overlapping regions with soft boundaries. */
     wavy({rows, cols, params, rng}) {
@@ -114,30 +149,35 @@ export const TERRAIN_GENERATORS = {
         return grid;
     },
 
-    /**
-     * `numVillages` contiguous vertical regions, each carrying an equal-sized group of
-     * resources at full concentration. Pairs with the `villages` population placement: with
-     * `numVillages = 2` and `numResources = 2n`, resources `[0, n)` cluster on the left and
-     * `[n, 2n)` on the right, so each founding community starts with access to only its own
-     * local half of the diet — the setup for the half-diet/hub investigation
-     * (RESEARCH.md Group 3).
-     */
-    regionalGroups({rows, cols, params}) {
-        const v = params.numVillages;
-        const perVillage = Math.ceil(params.numResources / v);
-        const grid = [];
-        for (let i = 0; i < rows; i++) {
-            grid[i] = [];
-            for (let j = 0; j < cols; j++) {
-                const cell = new Array(params.numResources).fill(0);
-                const village = Math.min(v - 1, Math.floor((j / cols) * v));
-                const start = village * perVillage;
-                const end = Math.min(params.numResources, start + perVillage);
-                for (let r = start; r < end; r++) cell[r] = 1;
-                grid[i][j] = cell;
+    /** `regionalGroups` with the `wavy` texture inside each region. See `regionalResources`. */
+    regionalGroupsWavy(ctx) {
+        const {rows, cols, params, rng} = ctx;
+        // Seeds are drawn first, one per resource, matching `wavy`'s construction order.
+        const seeds = Array.from({length: params.numResources}, () => rng.next() * 40);
+        const cutoff = params.undulation_cutuff;
+        return buildRegionalGrid(rows, cols, params, (cell, i, j, start, end) => {
+            for (let r = start; r < end; r++) {
+                cell[r] = Math.max(cellConcentration(j, i, seeds[r], params) - cutoff, 0) / (1 - cutoff);
             }
-        }
-        return grid;
+        });
+    },
+
+    /** `regionalGroups` with the `randomResource` texture inside each region. */
+    regionalGroupsRandom(ctx) {
+        const {rows, cols, params, rng} = ctx;
+        return buildRegionalGrid(rows, cols, params, (cell, i, j, start, end) => {
+            cell[start + rng.int(end - start)] = 1;
+        });
+    },
+
+    /**
+     * Back-compatible alias for `regionalGroupsWavy`.
+     *
+     * Saved configs and `configs/*.json` written before the split store this name; keeping it
+     * resolvable means they still load. New work should name a variant explicitly.
+     */
+    regionalGroups(ctx) {
+        return TERRAIN_GENERATORS.regionalGroupsWavy(ctx);
     },
 
     /** Uniform mixture everywhere. No specialisation, so no gains from trade: a null model. */
