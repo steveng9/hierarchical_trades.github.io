@@ -15,6 +15,8 @@ import {REPRODUCTION} from './reproduction.js';
 import {LIFECYCLE} from './lifecycle.js';
 import {TERRAIN_GENERATORS} from './terrain.js';
 import {TRADE_SELECTION} from './tradeSelection.js';
+import {POPULATION} from './population.js';
+import {MATCHING} from './matching.js';
 
 export const MECHANICS_REGISTRY = {
     metabolism:   METABOLISM,
@@ -24,6 +26,8 @@ export const MECHANICS_REGISTRY = {
     lifecycle:    LIFECYCLE,
     terrain:        TERRAIN_GENERATORS,
     tradeSelection: TRADE_SELECTION,
+    population:     POPULATION,
+    matching:       MATCHING,
 };
 
 /** The historical rule set. Any deviation should be justified in the scenario file. */
@@ -35,6 +39,8 @@ export const DEFAULT_MECHANICS = Object.freeze({
     lifecycle:    'idleWindow',
     terrain:        'wavy',
     tradeSelection: 'invokeAll',
+    population:     'uniform',
+    matching:       'frictionless',
 });
 
 /**

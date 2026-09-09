@@ -120,7 +120,7 @@ export class Trade {
 
             const amountInOpposite = amountIn / this.XinYin[side];
             this.escrow[resourceOut] -= amountInOpposite;
-            const partners = this.fulfillRequest(amountInOpposite, oppositeSide(side));
+            const partners = this.fulfillRequest(amountInOpposite, oppositeSide(side), human);
             for (const partner of partners) {
                 const key = [human.id, partner.id].sort((a, b) => a - b).join('-');
                 this.trade_partners.set(key, this.sim.tick);
@@ -320,8 +320,18 @@ export class Trade {
         }
     }
 
-    /** Pay out queued counterparty requests on `side` against an incoming amount. */
-    fulfillRequest(amountNeededTotal, side) {
+    /**
+     * Pay out queued counterparty requests on `side` against an incoming amount.
+     *
+     * `actingHuman` is the live counterpart on the other side of this match — the same
+     * relationship `trade_partners` records and the forest canvas draws a line for. The
+     * `matching` mechanic may divert part of a requester's payout into `this.supply[]`
+     * based on the distance between the two; the historical default withholds nothing, so
+     * how much of `amountNeededTotal` is drawn down from the escrow queue (`amount`,
+     * `request.quantity`) is unaffected either way — only how much of the converted payout
+     * reaches the requester versus the trade's own pool.
+     */
+    fulfillRequest(amountNeededTotal, side, actingHuman) {
         const partners = [];
         const resourceOut = this.resourcesIn[oppositeSide(side)];
         const requests = this.requests[side];
@@ -335,8 +345,13 @@ export class Trade {
             partners.push(requester);
             const amount = Math.min(amountNeededTotal - fulfilledTotal, request.quantity);
 
-            requester.supply[resourceOut] += amount / this.XinXout[side];
-            requester.volumeTradedFor[resourceOut] += amount / this.XinXout[side];
+            const rawPayout = amount / this.XinXout[side];
+            const frictionFraction = this.sim.mechanics.matching.frictionFraction(actingHuman, requester, this.sim);
+            const payout = rawPayout * (1 - frictionFraction);
+
+            requester.supply[resourceOut] += payout;
+            requester.volumeTradedFor[resourceOut] += payout;
+            if (frictionFraction > 0) this.supply[resourceOut] += rawPayout - payout;
             fulfilledTotal += amount;
 
             request.quantity -= amount;

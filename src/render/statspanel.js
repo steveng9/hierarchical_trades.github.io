@@ -4,7 +4,7 @@ import {TimeViewport} from './timeviewport.js';
 
 const ROW_H = 130;   // 100px graph + 30px for label / breathing room
 
-// StatsPanel: 8 time-series graphs displayed in a 2-column × 4-row grid,
+// StatsPanel: time-series graphs displayed in a uniform 2-column grid,
 // positioned dynamically below the TradeFlowView panel.
 export class StatsPanel {
     constructor(tradeFlowView) {
@@ -59,10 +59,10 @@ export class StatsPanel {
         this._graphs[5].colors = lvlColors;   // active trades by level
         this._graphs[6].colors = lvlColors;   // volume by level
 
-        // Wide graph spanning both columns: forest's undepleted ceiling (dashed) vs what's
-        // actually left in the ground right now (solid), per resource, same colour pair.
+        // Forest's undepleted ceiling (dashed) vs what's actually left in the ground right
+        // now (solid), per resource, same colour pair. Same size as the rest of the grid.
         const forestGraph = new Graph(0, 0, this._d.forestVsMax, 'Occupied-Cell Forest Resources: Regrowth Ceiling (dashed) vs Current',
-            resLabels.flatMap(l => [`${l} max`, `${l} now`]), [], GW * 2 + 20, GH,
+            resLabels.flatMap(l => [`${l} max`, `${l} now`]), [], GW, GH,
             Array.from({length: N * 2}, (_, i) => i % 2 === 0), this.viewport);
         forestGraph.colors = resColors.flatMap(c => [c, c]);
         this._graphs.push(forestGraph);
@@ -101,10 +101,9 @@ export class StatsPanel {
         return this.tradeFlowView.y + this.tradeFlowView.panelHeight + PARAMS.margin;
     }
 
-    // Grid rows (2 small graphs each) plus one row for the wide graph.
+    // Grid rows, 2 graphs each.
     get panelHeight() {
-        const smallGraphs = this._graphs.length - 1;
-        return (Math.ceil(smallGraphs / 2) + 1) * ROW_H;
+        return Math.ceil(this._graphs.length / 2) * ROW_H;
     }
 
     _collectData() {
@@ -209,25 +208,18 @@ export class StatsPanel {
             this._collectData();
         }
 
-        // 2-column grid, matching the panel margins used by other views. The last graph is
-        // wide (spans both columns) and always gets its own row after the grid, whatever the
-        // grid's height turns out to be — so adding/removing a small graph needs no layout edit.
+        // 2-column grid, matching the panel margins used by other views. Adding/removing a
+        // graph needs no layout edit — it just falls into the next grid cell.
         const panelY = this.y;
         const col1X  = PARAMS.margin;
         const col2X  = PARAMS.margin + 620;  // 600px graph + 20px gap
         const rowH   = ROW_H;
 
-        const smallGraphs = this._graphs.length - 1;
-        for (let i = 0; i < smallGraphs; i++) {
+        for (let i = 0; i < this._graphs.length; i++) {
             const g = this._graphs[i];
             g.x = i % 2 === 0 ? col1X : col2X;
             g.y = panelY + Math.floor(i / 2) * rowH;
             g.draw(ctx);
         }
-
-        const wide = this._graphs[this._graphs.length - 1];
-        wide.x = col1X;
-        wide.y = panelY + Math.ceil(smallGraphs / 2) * rowH;
-        wide.draw(ctx);
     }
 }

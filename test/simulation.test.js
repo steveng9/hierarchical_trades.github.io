@@ -16,6 +16,24 @@ test('conservation holds with depletion disabled', () => {
     for (const check of sim.checkConservation(1e-6)) assert.ok(check.ok);
 });
 
+/**
+ * Regression: a level-2+ trade can be built on a parent within the same tick the parent is
+ * marked deprecated (cleanup runs after buildMultiLevelTrades, before that tick's prune). The
+ * new child then keeps drawing down `parentTrade.supply[]` on ticks after the parent has been
+ * spliced out of `trademanager.trades` and its supply already recorded as lost — resources
+ * leave the ledger's "lost" bucket and reappear in a live human's supply, out of nowhere.
+ * `surplusToTradeFraction` pools supply even while an inventor is alive, making the race easy
+ * to hit without needing hierarchy's usual founder-death precondition or a long run.
+ */
+test('conservation holds when trades pool supply while their inventor is alive', () => {
+    const sim = new Simulation({
+        params: {...small, initialHumans: 200, forestwidth: 800, forestheight: 500, surplusToTradeFraction: 0.3},
+    }).run(1500);
+    for (const check of sim.checkConservation(1e-6)) {
+        assert.ok(check.ok, `resource ${check.resource} drifted by ${check.drift}`);
+    }
+});
+
 test('maxTradeLevel = 0 suppresses all trade', () => {
     const sim = new Simulation({params: {...small, maxTradeLevel: 0}}).run(300);
     assert.equal(sim.world.trademanager.total_trades_made, 0);

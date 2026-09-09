@@ -55,6 +55,10 @@ export class Human {
         this.socialReach = options.reach ?? drawnReach;
         this.productivity = sim.rng.float(0, params.production_max);
 
+        // Read only by cooldown-gated reproduction variants; inert (never read) under the
+        // historical default, so this addition is RNG-neutral and golden-safe.
+        this.lastReproductionTick = this.birthTick;
+
         this.numOffspring = 0;
         this.num_trades_built = 0;
         this.trades_built = Array.from({length: params.numResources}, () =>
@@ -128,6 +132,7 @@ export class Human {
     produce() {
         const params = this.sim.params;
         const forest = this.sim.world.forest;
+        const multiplier = this.productionMultiplier();
         for (let r = 0; r < params.numResources; r++) {
             const concentration = forest.getConcentration(this.x, this.y, r);
             // Cubic in concentration: production is sharply concentrated in the best ground,
@@ -135,7 +140,7 @@ export class Human {
             const produced = this.sim.rng.normal(
                 this.productivity * Math.pow(concentration, 3),
                 concentration * 0.1
-            );
+            ) * multiplier;
             this.supply[r] += produced;
             this.sim.ledger.recordProduced(r, produced);
             if (produced > 0) this.productionTicks[r]++;
@@ -148,8 +153,9 @@ export class Human {
 
     labor() {
         const params = this.sim.params;
-        this.alternativeSupply[0] += params.laborPerCycle;
-        this.sim.ledger.recordProduced(params.numResources, params.laborPerCycle);
+        const laborProduced = params.laborPerCycle * this.productionMultiplier();
+        this.alternativeSupply[0] += laborProduced;
+        this.sim.ledger.recordProduced(params.numResources, laborProduced);
         this.spendEnergy(params.workEnergyCost);
     }
 
@@ -158,6 +164,7 @@ export class Human {
     eat()                  { this.sim.mechanics.metabolism.metabolize(this, this.sim); }
     totalEnergy()          { return this.sim.mechanics.metabolism.totalEnergy(this); }
     spendEnergy(amount)    { this.sim.mechanics.metabolism.spendEnergy(this, amount); }
+    productionMultiplier() { return this.sim.mechanics.metabolism.productionMultiplier(this, this.sim); }
     updateResourceValuations() {
         this.sim.mechanics.valuation.update(this, this.sim);
         this.pruneDeprecatedTrades();
@@ -315,6 +322,12 @@ export class Human {
         }
 
         for (const parentTrade of this.sim.rng.shuffle([...knownTrades])) {
+            // A trade can be deprecated mid-tick (cleanup runs after this phase) and still
+            // linger in `knownTrades` until the next prune. Building on it here would create
+            // a child whose parent is already gone from the active trade list — its
+            // `parentTrade.supply[]` would keep paying out invocations without ever being
+            // counted by `world.sumAllResources` again, a real (if narrow) conservation leak.
+            if (parentTrade.deprecated) continue;
             if (params.maxTradeLevel !== null && parentTrade.level + 1 > params.maxTradeLevel) continue;
 
             // One live child per inventor per parent.

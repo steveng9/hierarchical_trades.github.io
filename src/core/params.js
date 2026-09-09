@@ -79,6 +79,14 @@ export const PARAM_SCHEMA = {
     reproductionEnergyThreshold: {default: 90,  type: 'float', min: 0, group: 'agents', doc: 'Total energy at which an agent splits.'},
     reproductionMutationRate:    {default: 0.1, type: 'float', min: 0, group: 'agents', doc: 'Trait mutation sd, as a fraction of the trait value.'},
     social_reach_multiplier:     {default: 0.4, type: 'float', min: 0, group: 'agents', doc: 'Scales the right-skewed social-reach draw.'},
+    reproductionCooldownTicks: {default: 0, type: 'int', min: 0, group: 'agents',
+        doc: 'Ticks an agent must wait after a birth event (its own or as a parent) before reproducing again. Used by the asexualSplitCooldown reproduction variant; 0 = no cooldown (ignored by the historical default variant).'},
+    numVillages: {default: 2, type: 'int', min: 1, group: 'agents',
+        doc: 'Number of founding communities, for the villages population-placement variant and the matching regionalGroups terrain generator. Unused by the historical default (uniform placement).'},
+    villageSpread: {default: 60, type: 'float', min: 0, group: 'agents',
+        doc: 'Standard deviation (px) of each founding village\'s 2D Gaussian spawn cluster. Used only by the villages population-placement variant.'},
+    dietWellFedShare: {default: 0.5, type: 'float', min: 0, max: 1, group: 'agents',
+        doc: 'Fraction of a resource\'s per-resource energy cap an agent must hold to count that resource as satisfied, for the dietBalance metabolism variant\'s production multiplier. Unused by the historical default (classic) metabolism.'},
 
     // ---- trading ---------------------------------------------------------------------
     tradeAmountPerInvocation: {default: 1, type: 'float', min: 0.1, group: 'trading',
@@ -96,6 +104,10 @@ export const PARAM_SCHEMA = {
         doc: 'Fractional improvement over the best local rate required to justify building. 0 admits all. A competition-intensity axis.'},
     tradeLoyaltyThreshold: {default: 0, type: 'float', min: 0, max: 1, group: 'trading',
         doc: 'Switching cost for the bestRate trade-selection mechanic. 0 = pure rate optimization; higher = agents stick with their current trade unless a competitor is better by this fraction.'},
+    tradeFrictionSteepness: {default: 3, type: 'float', min: 0, group: 'trading',
+        doc: 'How fast pairwise trade friction ramps with distance, for the distanceFriction matching mechanic. Unused by the historical default (frictionless).'},
+    tradeFrictionMaxFraction: {default: 0.9, type: 'float', min: 0, max: 1, group: 'trading',
+        doc: 'Cap on the fraction of a match withheld to distance friction, for the distanceFriction matching mechanic. Unused by the historical default (frictionless).'},
 
     // ---- hierarchy -------------------------------------------------------------------
     inventorPerpetualRoyalty: {default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',
