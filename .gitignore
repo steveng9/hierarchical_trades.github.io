@@ -4,3 +4,7 @@
 # Experiment output. Runs are reproducible from (git SHA, scenario, params, seed),
 # so the data itself is regenerable and does not belong in the repository.
 results/
+
+# Claude Code worktrees live inside the repo. Without this, "git add -A" stages each
+# one as a gitlink (a bogus submodule entry), which then collides on every merge.
+.claude/worktrees/
