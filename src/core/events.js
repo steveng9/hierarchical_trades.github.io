@@ -22,6 +22,7 @@ export const EVENTS = Object.freeze({
     TRADE_DEPRECATED:'trade:deprecated',
     MANAGER_ADDED:   'manager:added',
     SURPLUS_PAID:    'surplus:paid',
+    EXCHANGE_SWAP:   'exchange:swap',   // pairwise exchange only
 });
 
 const VALID_EVENTS = new Set(Object.values(EVENTS));

@@ -10,7 +10,7 @@
 import {PARAMS, gameEngine} from '../browser/context.js';
 import {distance} from '../core/mathutil.js';
 
-const RESOURCE_PALETTE = [
+export const RESOURCE_PALETTE = [
     [1, 0, 0],     // 0 — red
     [0, 1, 0],     // 1 — green
     [0, 0, 1],     // 2 — blue

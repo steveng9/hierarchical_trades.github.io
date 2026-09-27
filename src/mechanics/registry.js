@@ -17,6 +17,8 @@ import {TERRAIN_GENERATORS} from './terrain.js';
 import {TRADE_SELECTION} from './tradeSelection.js';
 import {POPULATION} from './population.js';
 import {MATCHING} from './matching.js';
+import {EXCHANGE} from './exchange.js';
+import {LINK_FORMATION} from './linkFormation.js';
 
 export const MECHANICS_REGISTRY = {
     metabolism:   METABOLISM,
@@ -28,6 +30,8 @@ export const MECHANICS_REGISTRY = {
     tradeSelection: TRADE_SELECTION,
     population:     POPULATION,
     matching:       MATCHING,
+    exchange:       EXCHANGE,
+    linkFormation:  LINK_FORMATION,
 };
 
 /** The historical rule set. Any deviation should be justified in the scenario file. */
@@ -41,6 +45,8 @@ export const DEFAULT_MECHANICS = Object.freeze({
     tradeSelection: 'invokeAll',
     population:     'uniform',
     matching:       'frictionless',
+    exchange:       'postedTrades',
+    linkFormation:  'localProbability',   // read only under exchange: 'pairwise'
 });
 
 /**

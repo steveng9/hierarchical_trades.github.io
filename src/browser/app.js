@@ -12,6 +12,7 @@ import {ForestView} from '../render/forestview.js';
 import {drawHuman} from '../render/humanview.js';
 import {DataManager} from '../render/datamanager.js';
 import {SelectionManager} from '../render/selectionmanager.js';
+import {NetworkView} from '../render/networkview.js';
 
 class Timer {
     constructor() {
@@ -47,6 +48,8 @@ export class BrowserApp {
         this.forestView = null;
         this.datamanager = null;
         this.selection = null;
+        // Survives resets, like the trade-level display mode.
+        this.networkView = new NetworkView();
         this.totalExistingActual = [];
         this.totalExistingExpected = [];
         this.conservationDrift = [];
@@ -89,6 +92,7 @@ export class BrowserApp {
 
         this.datamanager = new DataManager(this.sim.world);
         this.selection = new SelectionManager(this.forestView);
+        this.networkView.validate(this.sim.params.numResources);
 
         return this.sim;
     }
@@ -141,6 +145,7 @@ export class BrowserApp {
         this.forestView.draw(ctx);
         for (const human of this.sim.world.humans) drawHuman(ctx, human, this.forestView);
         this.forestView.drawTradeLines(ctx);
+        this.networkView.draw(ctx, this.forestView, this.sim);
 
         ctx.clearRect(0, panelsY, ctx.canvas.width, ctx.canvas.height - panelsY);
         for (const graph of this.graphs) graph.draw(ctx);

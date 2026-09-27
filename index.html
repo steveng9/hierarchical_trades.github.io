@@ -261,6 +261,52 @@
                         <span class="param-val" id="min_rate_improvement_val"></span>
                     </div>
                 </div>
+
+                <div class="parameter-section">
+                    <h3>Network (pairwise exchange)</h3>
+                    <div class="param-row">
+                        <span class="param-label">Link probability</span>
+                        <input type="range" id="linkProbability" min="0" max="1" step="0.05"
+                               oninput="document.getElementById('linkProbability_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="linkProbability_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Links per birth (triadic)</span>
+                        <input type="range" id="linksPerBirth" min="1" max="10" step="1"
+                               oninput="document.getElementById('linksPerBirth_val').textContent=this.value">
+                        <span class="param-val" id="linksPerBirth_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Hop markup (log)</span>
+                        <input type="range" id="valuationHopMarkup" min="0" max="2" step="0.05"
+                               oninput="document.getElementById('valuationHopMarkup_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="valuationHopMarkup_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Min swap gap (log)</span>
+                        <input type="range" id="minExchangeLogGap" min="0" max="0.5" step="0.01"
+                               oninput="document.getElementById('minExchangeLogGap_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="minExchangeLogGap_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Flow memory (ticks)</span>
+                        <input type="range" id="flowMemoryTicks" min="10" max="1000" step="10"
+                               oninput="document.getElementById('flowMemoryTicks_val').textContent=this.value">
+                        <span class="param-val" id="flowMemoryTicks_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Link idle limit (rewiring)</span>
+                        <input type="range" id="linkIdleTicks" min="10" max="2000" step="10"
+                               oninput="document.getElementById('linkIdleTicks_val').textContent=this.value">
+                        <span class="param-val" id="linkIdleTicks_val"></span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Introduction prob. (rewiring)</span>
+                        <input type="range" id="linkIntroductionProbability" min="0" max="0.5" step="0.01"
+                               oninput="document.getElementById('linkIntroductionProbability_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="linkIntroductionProbability_val"></span>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -268,6 +314,21 @@
         <!-- Mechanics selectors -->
         <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
             <h3>Mechanics</h3>
+            <div class="param-row">
+                <span class="param-label">Exchange</span>
+                <select id="mechanic_exchange" style="width:140px">
+                    <option value="postedTrades">postedTrades</option>
+                    <option value="pairwise">pairwise</option>
+                </select>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Link formation</span>
+                <select id="mechanic_linkFormation" style="width:140px">
+                    <option value="localProbability">localProbability</option>
+                    <option value="triadicClosure">triadicClosure</option>
+                    <option value="usageRewiring">usageRewiring</option>
+                </select>
+            </div>
             <div class="param-row">
                 <span class="param-label">Trade selection</span>
                 <select id="mechanic_tradeSelection" style="width:140px">
@@ -363,6 +424,8 @@
         <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
         <button type="button" onclick="clearSelection()">Clear Selection</button>
         <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
+        <select id="networkViewSelect" onchange="setNetworkView(this.value)" disabled
+                title="Only the pairwise exchange mechanic has a network"></select>
 
         <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
             <span style="font-size:12px;">Find human:</span>

@@ -8,6 +8,16 @@ import {Random} from '../src/core/rng.js';
 
 const small = {seed: 5, initialHumans: 100, forestwidth: 400, forestheight: 300};
 
+/**
+ * A config exercising one variant. `linkFormation` is only read under the pairwise exchange,
+ * so its variants are run there; everywhere else they would be silently inert.
+ */
+function variantConfig(mechanic, variant) {
+    if (mechanic === 'terrain') return {params: small, terrain: variant};
+    if (mechanic === 'linkFormation') return {params: small, mechanics: {exchange: 'pairwise', linkFormation: variant}};
+    return {params: small, mechanics: {[mechanic]: variant}};
+}
+
 test('defaults resolve', () => {
     const m = resolveMechanics();
     for (const key of Object.keys(DEFAULT_MECHANICS)) assert.ok(m[key], `missing ${key}`);
@@ -21,9 +31,7 @@ test('unknown mechanic or variant throws with a helpful message', () => {
 test('every registered variant runs without error', () => {
     for (const [mechanic, family] of Object.entries(MECHANICS_REGISTRY)) {
         for (const variant of Object.keys(family)) {
-            const config = mechanic === 'terrain'
-                ? {params: small, terrain: variant}
-                : {params: small, mechanics: {[mechanic]: variant}};
+            const config = variantConfig(mechanic, variant);
             assert.doesNotThrow(
                 () => new Simulation(config).run(60),
                 `${mechanic}:${variant} threw`
@@ -35,10 +43,7 @@ test('every registered variant runs without error', () => {
 test('every variant conserves resources', () => {
     for (const [mechanic, family] of Object.entries(MECHANICS_REGISTRY)) {
         for (const variant of Object.keys(family)) {
-            const config = mechanic === 'terrain'
-                ? {params: small, terrain: variant}
-                : {params: small, mechanics: {[mechanic]: variant}};
-            const sim = new Simulation(config).run(100);
+            const sim = new Simulation(variantConfig(mechanic, variant)).run(100);
             for (const check of sim.checkConservation(1e-6)) {
                 assert.ok(check.ok, `${mechanic}:${variant} leaked resource ${check.resource} by ${check.drift}`);
             }

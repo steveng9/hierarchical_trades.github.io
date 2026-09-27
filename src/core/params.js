@@ -117,6 +117,22 @@ export const PARAM_SCHEMA = {
     hierarchicalTradeCostMultiplier: {default: 0.1, type: 'float', min: 0, group: 'hierarchy',
         doc: 'Build cost of a level-2+ trade, relative to level-1.'},
 
+    // ---- network (read only under the `pairwise` exchange mechanic) --------------------
+    linkProbability: {default: 0.3, type: 'float', min: 0, max: 1, group: 'network',
+        doc: 'Chance a newborn links to each agent within reach (the larger of the two reaches), under the localProbability and usageRewiring link-formation mechanics. 1 = everyone in reach.'},
+    linksPerBirth: {default: 2, type: 'int', min: 1, group: 'network',
+        doc: 'Links a newborn forms under triadicClosure: its parent, then linksPerBirth-1 of the parent\'s neighbours (topped up from agents within reach).'},
+    valuationHopMarkup: {default: 0.2, type: 'float', min: 0, group: 'network',
+        doc: 'Per-hop discount (log units) when a neighbour\'s valuation propagates into an agent\'s effective valuation. Sets how far demand is felt (about maxNeed/markup hops) and the margin a broker earns per hop. Keep above minExchangeLogGap or relay chains stall.'},
+    minExchangeLogGap: {default: 0.05, type: 'float', min: 0, group: 'network',
+        doc: 'Smallest difference in two neighbours\' log marginal rates of substitution that triggers a swap. A transaction threshold; 0 swaps on any disagreement.'},
+    flowMemoryTicks: {default: 100, type: 'int', min: 1, group: 'network',
+        doc: 'E-folding time of each edge\'s recent-flow record. Drives the resource-flow view and the usageRewiring introduction rule.'},
+    linkIdleTicks: {default: 300, type: 'int', min: 1, group: 'network',
+        doc: 'Under usageRewiring, a link that carries no flow for this long is dropped. New links get this long to prove themselves.'},
+    linkIntroductionProbability: {default: 0.05, type: 'float', min: 0, max: 1, group: 'network',
+        doc: 'Under usageRewiring, per-agent per-tick chance of linking the supplier and customer the agent relays the most of one resource between, if they are within reach of each other.'},
+
     // ---- experimental controls (default to current behaviour) ------------------------
     maxTradeLevel: {default: null, type: 'int', min: 0, group: 'hierarchy',
         doc: 'Hierarchy depth cap. null = unlimited, 0 = no trades at all, 1 = level-1 only. The control condition for "does hierarchy pay?".'},
@@ -132,7 +148,7 @@ export const ALIASES = Object.freeze({
 });
 
 /** Ordered groups, for UI sectioning and documentation. */
-export const PARAM_GROUPS = ['run', 'environment', 'agents', 'trading', 'hierarchy', 'display'];
+export const PARAM_GROUPS = ['run', 'environment', 'agents', 'trading', 'hierarchy', 'network', 'display'];
 
 /** Keys whose value changes the trajectory. Used for run identity hashing. */
 export function dynamicsKeys() {

@@ -19,6 +19,7 @@ import {BrowserApp} from './app.js';
 import {gameEngine, toggleRunning, setRunning} from './context.js';
 import {readParameterInputs, writeParameterInputs, readMechanicInputs} from './domutil.js';
 import {defaultParams} from '../core/params.js';
+import {resourceName} from '../render/networkview.js';
 
 let app = null;
 
@@ -54,6 +55,7 @@ function reset(base) {
     base = base ?? app.sim?.params ?? defaultParams();
     app.reset(Object.assign({}, base, readParameterInputs()), readMechanicInputs());
     writeParameterInputs(app.sim.params);
+    refreshNetworkViewSelect();
 }
 
 /**
@@ -72,6 +74,7 @@ function loadFullParams(params) {
     const full = Object.assign({}, defaultParams(), params);
     app.reset(full, readMechanicInputs());
     writeParameterInputs(app.sim.params);
+    refreshNetworkViewSelect();
 }
 
 function resetNewSeed() {
@@ -123,6 +126,26 @@ function cycleTradeLevel() {
     }
 }
 
+/**
+ * Rebuild the network-view <select> for the current simulation: one flow option per resource,
+ * and disabled entirely unless the pairwise exchange (the only one with a network) is running.
+ */
+function refreshNetworkViewSelect() {
+    const select = document.getElementById('networkViewSelect');
+    if (!select) return;
+    const hasNetwork = !!app.sim.world.exchange?.network;
+    const options = [['off', 'Network: OFF'], ['topology', 'Network: links']];
+    for (let r = 0; r < app.sim.params.numResources; r++) options.push([String(r), `Flow: ${resourceName(r)}`]);
+    select.replaceChildren(...options.map(([value, label]) => new Option(label, value)));
+    select.value = String(app.networkView.mode);
+    select.disabled = !hasNetwork;
+    select.title = hasNetwork ? '' : 'Only the pairwise exchange mechanic has a network';
+}
+
+function setNetworkView(value) {
+    app.networkView.setMode(value);
+}
+
 // The surface index.html's inline script calls. `PARAMS` is a getter so that
 // `Object.assign(PARAMS, savedConfig)` in loadConfigByIndex mutates the live parameters.
 Object.defineProperties(window, {
@@ -131,6 +154,7 @@ Object.defineProperties(window, {
 });
 Object.assign(window, {
     reset, resetNewSeed, pause, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
+    setNetworkView,
     gameEngine, defaultParams, readParameterInputs, writeParameterInputs,
 });
 

@@ -32,7 +32,14 @@ export class World {
             this.addHuman(this.createHuman(placement ? {x: placement.x, y: placement.y} : {}));
         }
 
+        // Exists under every exchange mechanic so probes and views that read `trades` see an
+        // empty list rather than crash; only the `postedTrades` engine ever updates it.
         this.trademanager = new TradeManager(sim);
+
+        // The trading step. Constructed after the founders so it can wire them (pairwise
+        // exchange builds its network here); the historical engine consumes no RNG doing so.
+        this.exchange = sim.mechanics.exchange.create(sim, this);
+        this.exchange.initialize(this.humans);
     }
 
     createHuman(options = {}) {
@@ -43,6 +50,8 @@ export class World {
         this.humans.push(human);
         this.humanById.set(human.id, human);
         this.grid.insert(human);
+        // Undefined only while the founders are being created; `initialize` covers them.
+        this.exchange?.onHumanAdded(human);
     }
 
     addHumanAt(x, y) {
@@ -65,17 +74,14 @@ export class World {
     }
 
     /**
-     * Every unit of resource `r` held anywhere: by agents, in trade escrow, or pooled as
-     * trade supply. The left-hand side of the conservation check.
+     * Every unit of resource `r` held anywhere: by agents, or by the exchange engine (trade
+     * escrow and pooled trade supply, under posted trades). The left-hand side of the
+     * conservation check.
      */
     sumAllResources(r) {
         let sum = 0;
         for (const human of this.humans) sum += human.supply[r];
-        for (const trade of this.trademanager.trades) {
-            sum += trade.escrow[r];
-            sum += trade.supply[r];
-        }
-        return sum;
+        return this.exchange.accumulateHeld(r, sum);
     }
 
     update() {
@@ -83,7 +89,7 @@ export class World {
 
         for (const human of this.humans) human.update();
         this.reapDead();
-        this.trademanager.update();
+        this.exchange.update();
     }
 
     /** Remove the dead, writing off whatever they were holding. */
@@ -96,6 +102,7 @@ export class World {
                 this.sim.ledger.recordLost(r, human.supply[r]);
             }
             this.grid.remove(human);
+            this.exchange.onHumanRemoved(human);
             this.humanById.delete(human.id);
             this.humans.splice(i, 1);
             this.totalDeaths++;

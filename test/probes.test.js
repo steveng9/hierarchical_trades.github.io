@@ -89,3 +89,30 @@ test('trait probe correlations stay in [-1, 1]', () => {
     assert.ok(row.reachProductivityCorr >= -1 && row.reachProductivityCorr <= 1);
     assert.ok(row.reachBuiltCorr >= -1 && row.reachBuiltCorr <= 1);
 });
+
+test('network probe measures a pairwise run and stays silent without a network', async () => {
+    const {transitivity} = await import('../src/probes/network.js');
+    const [probe] = resolveProbes(['network']);
+    const posted = new Simulation({params: small}).run(20);
+    assert.equal(probe.sample(posted), null);
+
+    const sim = new Simulation({params: {...small, production_labor_threshold: 0},
+        mechanics: {exchange: 'pairwise', linkFormation: 'triadicClosure'}}).run(150);
+    const row = probe.sample(sim);
+    const net = sim.world.exchange.network;
+    assert.equal(row.edges, net.edgeCount);
+    assert.ok(Math.abs(row.meanDegree - 2 * net.edgeCount / sim.world.population) < 1e-12);
+    for (const key of ['degreeGini', 'clustering', 'activeEdgeFrac', 'throughputGini', 'topDecileThroughputShare', 'brokerShare']) {
+        assert.ok(row[key] >= 0 && row[key] <= 1, `${key} = ${row[key]} outside [0, 1]`);
+    }
+    assert.ok(row.clustering > 0, 'triadic closure must produce triangles');
+
+    // Transitivity on a hand-built graph: a triangle plus a pendant has 3 triangles' worth of
+    // closed triples (one triangle, counted at three corners) over 5 connected triples.
+    const {SocialNetwork} = await import('../src/core/network.js');
+    const g = new SocialNetwork({numResources: 1, flowMemoryTicks: 10});
+    const [a, b, c, d] = [1, 2, 3, 4].map(id => ({id}));
+    for (const n of [a, b, c, d]) g.addNode(n);
+    g.link(a, b, 0); g.link(b, c, 0); g.link(a, c, 0); g.link(c, d, 0);
+    assert.ok(Math.abs(transitivity([a, b, c, d], g) - 3 / 5) < 1e-12);
+});

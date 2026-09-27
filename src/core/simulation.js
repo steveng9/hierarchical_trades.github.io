@@ -84,7 +84,8 @@ export class Simulation {
 
     /** Digest of the full world state. Identical seeds and parameters must agree. */
     hashState() {
-        return hashWorldState(this.tick, this.world.humans, this.world.trademanager.trades);
+        return hashWorldState(this.tick, this.world.humans, this.world.trademanager.trades,
+            this.world.exchange.hashParts());
     }
 
     /** Conservation check across every tradeable resource. */

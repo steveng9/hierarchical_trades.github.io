@@ -13,9 +13,11 @@
  * @param {number} tick
  * @param {Array} humans
  * @param {Array} trades   active trades only
+ * @param {string[]} [extraParts]  engine-specific state (e.g. the pairwise network's edges).
+ *   Empty under the historical engine, which leaves its digests, and the goldens, unchanged.
  * @returns {string} 16-character hex digest
  */
-export function hashWorldState(tick, humans, trades) {
+export function hashWorldState(tick, humans, trades, extraParts = []) {
     const parts = [`g:${tick}`];
 
     for (const h of humans) {
@@ -30,6 +32,8 @@ export function hashWorldState(tick, humans, trades) {
             `|${t.invocations.A},${t.invocations.B}|${t.volumeMoved.A},${t.volumeMoved.B}|${t.managers.size}`
         );
     }
+
+    for (const part of extraParts) parts.push(part);
 
     // FNV-1a, two independent 32-bit lanes concatenated. BigInt is avoided in this path
     // because it is called once per tick across long sweeps.
