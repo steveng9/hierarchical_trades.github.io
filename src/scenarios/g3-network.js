@@ -13,16 +13,14 @@
  *   - triadicClosure    static, lineage cliques: parent + neighbours of parent (linksPerBirth)
  *   - usageRewiring     dynamic: idle links decay, brokers introduce their supplier/customer
  *
- * `production_labor_threshold: 0`: labour only buys trade construction, which does not exist
- * here, so every agent produces rather than idling as a laborer.
+ * Nobody labours here: labour only buys trade construction, and the pairwise exchange
+ * declares `usesLabor: false`, so every agent produces whatever the labour threshold.
  *
  * Status: NEW. Mechanics built 2026-09-27; not yet validated against any prior data.
  */
 const base = {
     group: 3,
-    params: {
-        production_labor_threshold: 0,
-    },
+    params: {},
     terrain: 'wavy',
     probes: ['core', 'network'],
     ticks: 3000,

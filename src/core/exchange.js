@@ -10,6 +10,7 @@
  *   update()                    one tick of trading
  *   accumulateHeld(r, sum)      add resources held *outside* agents (for conservation)
  *   hashParts()                 extra state for `hashState`; [] leaves the hash unchanged
+ *   usesLabor                   whether labour buys anything; if not, nobody becomes a laborer
  *
  * - `PostedTradesExchange` is the historical model, meaning invented, managed, hierarchical
  *   trades. It is a thin adapter over the unchanged `TradeManager`, so the goldens hold.
@@ -27,6 +28,8 @@ export class PostedTradesExchange {
     constructor(sim, world) {
         this.sim = sim;
         this.world = world;
+        /** Labour pays for founding and running trades. */
+        this.usesLabor = true;
     }
 
     initialize() {}
@@ -210,6 +213,8 @@ export class PairwiseExchange {
     constructor(sim, world) {
         this.sim = sim;
         this.world = world;
+        /** No trades to build or run, so labour has no use: every agent produces. */
+        this.usesLabor = false;
         this.numResources = sim.params.numResources;
         this.network = new SocialNetwork({
             numResources: this.numResources,

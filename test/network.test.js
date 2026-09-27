@@ -70,7 +70,7 @@ test('strongestRelay finds the supplier/customer pair a broker relays the most t
 
 // ---- link formation, in a running simulation --------------------------------------------
 
-const small = {seed: 11, initialHumans: 120, forestwidth: 400, forestheight: 300, production_labor_threshold: 0};
+const small = {seed: 11, initialHumans: 120, forestwidth: 400, forestheight: 300};
 const pairwise = linkFormation => ({exchange: 'pairwise', linkFormation});
 
 function assertNoDanglingEdges(sim) {

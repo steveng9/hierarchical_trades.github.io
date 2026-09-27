@@ -2,16 +2,22 @@
  * HistogramPanel: population-distribution heatmaps, updated on the same cadence as
  * StatsPanel's graphs and positioned directly below them.
  *
- * Each bins the current population into 20 buckets over a range that tracks the live
- * population (0 to whatever the current maximum is) rather than each field's theoretical
- * range, so the heatmap stays legible whether the population's spread is wide or narrow.
+ * Two kinds of column:
+ *   - trait histograms (reach, productivity) bin the LIVING population;
+ *   - lifetime histograms (age, offspring) bin the most recent deaths only. Binning the
+ *     living would plot each cohort's age as a rising diagonal; binning completed lives
+ *     shows the distribution of total lifespan and lifetime fertility directly. Each column
+ *     covers the last DEATH_WINDOW deaths so one death per tick doesn't make it one pixel.
  */
 import {PARAMS, gameEngine, isRunning} from '../browser/context.js';
 import {Histogram} from './histogram.js';
 import {SOCIAL_REACH_SHAPE} from '../core/human.js';
+import {EVENTS} from '../core/events.js';
 
 const BINS = 20;
 const ROW_H = 130;
+/** How many of the most recent deaths each lifetime-histogram column summarises. */
+const DEATH_WINDOW = 100;
 
 /** Bin non-negative values into BINS buckets over [0, max]. If `max` is omitted, uses the
  * live max of `values` instead — the scale then tracks whatever's currently in view, which
@@ -35,8 +41,25 @@ function binByCount(values) {
 }
 
 export class HistogramPanel {
-    constructor(statsPanel) {
+    /**
+     * @param {StatsPanel} statsPanel
+     * @param {import('../core/events.js').EventBus} events  the simulation's bus, for deaths
+     */
+    constructor(statsPanel, events) {
         this.statsPanel = statsPanel;
+
+        // Ring of the most recent completed lives. The panel is rebuilt with each new
+        // simulation, and the old bus is discarded with the old simulation, so no unsubscribe.
+        this._recentDeaths = [];
+        // Age axis ceiling: the longest life seen so far. maxHumanAge can't serve, since it is
+        // often effectively infinite (starvation ends lives first), and a ceiling that only
+        // grows still lets a real shift in lifespan show as the distribution moving.
+        this._longestLife = 1;
+        events.on(EVENTS.HUMAN_DIED, ({human}) => {
+            this._longestLife = Math.max(this._longestLife, human.age);
+            this._recentDeaths.push({age: human.age, offspring: human.numOffspring});
+            if (this._recentDeaths.length > DEATH_WINDOW) this._recentDeaths.shift();
+        });
 
         this._d = {
             age:          [],
@@ -51,8 +74,8 @@ export class HistogramPanel {
         const GW = 600, GH = 100;
         const mk = (data, label) => new Histogram(0, 0, data, label, GW, GH, BINS, viewport);
         this._histograms = [
-            mk(this._d.age,          'Age distribution (0 → maxHumanAge)'),
-            mk(this._d.offspring,    'Offspring count distribution (0–19+)'),
+            mk(this._d.age,          `Age at death, last ${DEATH_WINDOW} deaths (0 → longest life so far)`),
+            mk(this._d.offspring,    `Lifetime offspring, last ${DEATH_WINDOW} deaths (0–19+)`),
             mk(this._d.socialReach,  'Social reach distribution (0 → fixed ceiling)'),
             mk(this._d.productivity, 'Productivity distribution (0 → current max)'),
         ];
@@ -94,8 +117,9 @@ export class HistogramPanel {
 
     _collectData() {
         const humans = gameEngine.automata.humans;
-        this._d.age.push(binByRange(humans.map(h => h.age), PARAMS.maxHumanAge));
-        this._d.offspring.push(binByCount(humans.map(h => h.numOffspring)));
+        const deaths = this._recentDeaths;
+        this._d.age.push(binByRange(deaths.map(d => d.age), this._longestLife));
+        this._d.offspring.push(binByCount(deaths.map(d => d.offspring)));
         // Fixed ceiling, not the population's live max: reach is drawn from an
         // Exponential(SOCIAL_REACH_SHAPE) scaled by social_reach_multiplier, and 4/shape
         // covers ~98% of that initial draw (P(X > 4/shape) ≈ e^-4). Freezing the axis here

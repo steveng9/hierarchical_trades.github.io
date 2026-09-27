@@ -45,7 +45,7 @@ test('negotiateSwap: higher rate buys, price is the geometric midpoint, both sid
 
 // ---- behaviour in a running simulation ---------------------------------------------------
 
-const small = {seed: 21, initialHumans: 150, forestwidth: 500, forestheight: 300, production_labor_threshold: 0};
+const small = {seed: 21, initialHumans: 150, forestwidth: 500, forestheight: 300};
 
 test('pairwise exchange conserves resources under every link formation and several worlds', () => {
     const worlds = [
@@ -176,4 +176,13 @@ test('demand pulls goods through a zero-stock middleman only when valuations pro
     assert.ok(pulled.k.supply[Y] > 1, `k should receive Y, got ${pulled.k.supply[Y]}`);
     assert.ok(close(pulled.i.exchange.passThrough(Y), pulled.k.supply[Y], 1e-9), 'i relays every unit k receives');
     assert.ok(pulled.i.supply[Y] < 1e-9, 'i ends holding none of it');
+});
+
+test('pairwise exchange has no laborers, whatever the labour threshold', () => {
+    const sim = new Simulation({params: {...small, production_labor_threshold: 1e9},
+        mechanics: {exchange: 'pairwise'}}).run(30);
+    assert.equal(sim.world.exchange.usesLabor, false);
+    assert.ok(sim.world.humans.every(h => !h.is_laborer));
+    const posted = new Simulation({params: {...small, production_labor_threshold: 1e9}}).run(30);
+    assert.ok(posted.world.humans.some(h => h.is_laborer));
 });

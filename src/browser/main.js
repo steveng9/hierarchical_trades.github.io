@@ -19,7 +19,6 @@ import {BrowserApp} from './app.js';
 import {gameEngine, toggleRunning, setRunning} from './context.js';
 import {readParameterInputs, writeParameterInputs, readMechanicInputs} from './domutil.js';
 import {defaultParams} from '../core/params.js';
-import {resourceName} from '../render/networkview.js';
 
 let app = null;
 
@@ -55,7 +54,7 @@ function reset(base) {
     base = base ?? app.sim?.params ?? defaultParams();
     app.reset(Object.assign({}, base, readParameterInputs()), readMechanicInputs());
     writeParameterInputs(app.sim.params);
-    refreshNetworkViewSelect();
+    refreshOverlayButtons();
 }
 
 /**
@@ -74,7 +73,7 @@ function loadFullParams(params) {
     const full = Object.assign({}, defaultParams(), params);
     app.reset(full, readMechanicInputs());
     writeParameterInputs(app.sim.params);
-    refreshNetworkViewSelect();
+    refreshOverlayButtons();
 }
 
 function resetNewSeed() {
@@ -127,23 +126,26 @@ function cycleTradeLevel() {
 }
 
 /**
- * Rebuild the network-view <select> for the current simulation: one flow option per resource,
- * and disabled entirely unless the pairwise exchange (the only one with a network) is running.
+ * Show whichever overlay button fits the RUNNING simulation: the trade-level cycler under
+ * posted trades, the network cycler under an exchange with a network. Called only after a
+ * reset, so picking a different mechanic in the panel changes nothing until it takes effect.
  */
-function refreshNetworkViewSelect() {
-    const select = document.getElementById('networkViewSelect');
-    if (!select) return;
+function refreshOverlayButtons() {
     const hasNetwork = !!app.sim.world.exchange?.network;
-    const options = [['off', 'Network: OFF'], ['topology', 'Network: links']];
-    for (let r = 0; r < app.sim.params.numResources; r++) options.push([String(r), `Flow: ${resourceName(r)}`]);
-    select.replaceChildren(...options.map(([value, label]) => new Option(label, value)));
-    select.value = String(app.networkView.mode);
-    select.disabled = !hasNetwork;
-    select.title = hasNetwork ? '' : 'Only the pairwise exchange mechanic has a network';
+    const levelBtn = document.getElementById('levelDisplayBtn');
+    const networkBtn = document.getElementById('networkViewBtn');
+    if (levelBtn) levelBtn.hidden = hasNetwork;
+    if (networkBtn) {
+        networkBtn.hidden = !hasNetwork;
+        networkBtn.textContent = app.networkView.label;
+    }
 }
 
-function setNetworkView(value) {
-    app.networkView.setMode(value);
+/** Cycle the network overlay: OFF -> links -> each resource's flow -> OFF. */
+function cycleNetworkView() {
+    app.networkView.cycle(app.sim.params.numResources);
+    const btn = document.getElementById('networkViewBtn');
+    if (btn) btn.textContent = app.networkView.label;
 }
 
 // The surface index.html's inline script calls. `PARAMS` is a getter so that
@@ -154,7 +156,7 @@ Object.defineProperties(window, {
 });
 Object.assign(window, {
     reset, resetNewSeed, pause, loadFullParams, toggleSocialReach, clearSelection, cycleTradeLevel,
-    setNetworkView,
+    cycleNetworkView,
     gameEngine, defaultParams, readParameterInputs, writeParameterInputs,
 });
 

@@ -4,7 +4,7 @@
  *
  * Modes:
  *   'off'       nothing drawn
- *   'topology'  every link, thin and grey
+ *   'topology'  every link, dark on a pale halo so it reads over any terrain
  *   r (number)  only links that recently carried resource r, in r's forest colour, width
  *               growing with log(1 + recent flow), with an arrowhead showing net direction
  *               where the flow is mostly one-way
@@ -24,6 +24,7 @@ const MIN_VISIBLE_FLOW = 0.01;
 /** Arrowheads only where at least this share of an edge's recent flow runs one way. */
 const ARROW_NET_SHARE = 0.6;
 const MAX_WIDTH = 9;
+const TOPOLOGY_WIDTH = 1.6;
 
 export const RESOURCE_NAMES = ['red', 'green', 'blue', 'gold', 'purple', 'teal', 'orange', 'lime'];
 
@@ -42,11 +43,18 @@ export class NetworkView {
         this.mode = 'off';
     }
 
-    /** Accepts the <select> value: 'off', 'topology', or a resource index as a string. */
-    setMode(value) {
-        if (value === 'off' || value === 'topology') this.mode = value;
-        else if (Number.isInteger(Number(value))) this.mode = Number(value);
-        else this.mode = 'off';
+    /** Step to the next mode: off -> links -> resource 0 -> ... -> resource R-1 -> off. */
+    cycle(numResources) {
+        if (this.mode === 'off') this.mode = 'topology';
+        else if (this.mode === 'topology') this.mode = numResources > 0 ? 0 : 'off';
+        else this.mode = this.mode + 1 < numResources ? this.mode + 1 : 'off';
+    }
+
+    /** Button caption for the current mode. */
+    get label() {
+        if (this.mode === 'off') return 'Network: OFF';
+        if (this.mode === 'topology') return 'Network: links';
+        return `Network: ${resourceName(this.mode)} flow`;
     }
 
     /** Drop a resource mode that no longer exists (e.g. after numResources was lowered). */
@@ -77,10 +85,14 @@ export class NetworkView {
     }
 
     drawTopology(ctx, origin, sim, network) {
-        ctx.strokeStyle = 'rgba(40, 40, 40, 0.45)';
-        ctx.lineWidth = 1;
         ctx.beginPath();
         for (const edge of network.edges.values()) this.tracePath(ctx, origin, sim, edge.a, edge.b);
+        // One path stroked twice: a pale halo, then a near-black core on top of it.
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = TOPOLOGY_WIDTH + 2;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(15, 15, 15, 0.95)';
+        ctx.lineWidth = TOPOLOGY_WIDTH;
         ctx.stroke();
     }
 

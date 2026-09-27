@@ -96,7 +96,7 @@ test('network probe measures a pairwise run and stays silent without a network',
     const posted = new Simulation({params: small}).run(20);
     assert.equal(probe.sample(posted), null);
 
-    const sim = new Simulation({params: {...small, production_labor_threshold: 0},
+    const sim = new Simulation({params: small,
         mechanics: {exchange: 'pairwise', linkFormation: 'triadicClosure'}}).run(150);
     const row = probe.sample(sim);
     const net = sim.world.exchange.network;

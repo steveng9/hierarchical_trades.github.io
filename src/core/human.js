@@ -116,11 +116,13 @@ export class Human {
      *
      * Agents on poor ground become labourers, and labour is the only currency that buys
      * norm construction. The laborer/producer split — set by `production_labor_threshold` —
-     * therefore governs how much institution-building the economy can afford at all.
+     * therefore governs how much institution-building the economy can afford at all. Under an
+     * exchange with no use for labour (pairwise), nobody labours.
      */
     work() {
         const potential = this.calculateProductionPotential();
-        this.is_laborer = potential < this.sim.params.production_labor_threshold;
+        this.is_laborer = this.sim.world.exchange.usesLabor
+            && potential < this.sim.params.production_labor_threshold;
         if (this.is_laborer && !this.criticallyHungry()) this.labor();
         else this.produce();
     }

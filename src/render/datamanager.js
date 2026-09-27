@@ -71,7 +71,7 @@ export class DataManager {
         const stats = new StatsPanel(tfv);
         gameEngine.addGraph(stats);
         gameEngine.dragCapableGraphs.push(stats);
-        const histograms = new HistogramPanel(stats);
+        const histograms = new HistogramPanel(stats, automata.sim.events);
         gameEngine.addGraph(histograms);
         gameEngine.dragCapableGraphs.push(histograms);
     }

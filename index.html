@@ -424,8 +424,7 @@
         <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
         <button type="button" onclick="clearSelection()">Clear Selection</button>
         <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
-        <select id="networkViewSelect" onchange="setNetworkView(this.value)" disabled
-                title="Only the pairwise exchange mechanic has a network"></select>
+        <button type="button" id="networkViewBtn" onclick="cycleNetworkView()" hidden>Network: OFF</button>
 
         <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
             <span style="font-size:12px;">Find human:</span>
