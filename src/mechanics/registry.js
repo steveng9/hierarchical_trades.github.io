@@ -3,7 +3,9 @@
  *
  * A scenario names the implementation it wants for each mechanic; the kernel calls the
  * resolved objects without knowing which was chosen. Adding a rule variant means adding a
- * named entry in the relevant module — never editing the kernel.
+ * named entry in the relevant module — never editing the kernel — plus an <option> in its
+ * index.html selector, and the variant's name in the `usedBy` tag of every parameter it
+ * reads (src/core/params.js). test/relevance.test.js fails until all three are done.
  *
  * Every default here reproduces the pre-refactor behaviour exactly, so the golden
  * trajectories hold. Selecting anything else is an explicit, documented departure.
@@ -47,6 +49,26 @@ export const DEFAULT_MECHANICS = Object.freeze({
     matching:       'frictionless',
     exchange:       'postedTrades',
     linkFormation:  'localProbability',   // read only under exchange: 'pairwise'
+});
+
+/**
+ * When a family's choice matters at all. A family missing here is always active. Otherwise
+ * it is active when any listed clause holds, and a clause holds when every family it names
+ * is active and set to one of the listed variants (see `src/mechanics/relevance.js`).
+ *
+ * Only families that the kernel reaches through one exchange engine belong here: the
+ * posted-trades families are called only from `TradeManager`/`Trade`, and link formation
+ * only from `PairwiseExchange`. The control panel hides an inactive family's selector, and
+ * every parameter tagged with it.
+ *
+ * Adding a family: add it here if it is reached through only some variants of another.
+ */
+export const FAMILY_REQUIRES = Object.freeze({
+    pricing:        [{exchange: ['postedTrades']}],
+    tradeSelection: [{exchange: ['postedTrades']}],
+    lifecycle:      [{exchange: ['postedTrades']}],
+    matching:       [{exchange: ['postedTrades']}],
+    linkFormation:  [{exchange: ['pairwise']}],
 });
 
 /**

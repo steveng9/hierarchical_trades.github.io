@@ -11,6 +11,7 @@
  * One scenario per link-formation rule, because sweep grids vary parameters, not mechanics:
  *   - localProbability  static, local, random within reach (linkProbability)
  *   - triadicClosure    static, lineage cliques: parent + neighbours of parent (linksPerBirth)
+ *   - parentNearest     static, reach-free: parent + nearest agents (linksPerBirth)
  *   - usageRewiring     dynamic: idle links decay, brokers introduce their supplier/customer
  *
  * Nobody labours here: labour only buys trade construction, and the pairwise exchange
@@ -52,6 +53,14 @@ export const networkTriadic = {
     name: 'g3-network-triadic',
     description: 'Pairwise exchange on a static triadic-closure network (parent + neighbours of parent).',
     mechanics: {exchange: 'pairwise', linkFormation: 'triadicClosure'},
+};
+
+export const networkNearest = {
+    ...base,
+    name: 'g3-network-nearest',
+    description: 'Pairwise exchange on a static reach-free network: parent + (linksPerBirth - 1) nearest agents.',
+    mechanics: {exchange: 'pairwise', linkFormation: 'parentNearest'},
+    grid: {...base.grid, linksPerBirth: [2, 3, 5]},
 };
 
 export const networkRewiring = {

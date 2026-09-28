@@ -27,7 +27,23 @@
  * @property {string}  group
  * @property {string}  doc
  * @property {boolean} [affectsDynamics]  false for display-only params (excluded from run hashes)
+ * @property {Array<Object<string,string[]>>} [usedBy]  the mechanic variants whose code reads
+ *   this parameter, as clauses (any clause suffices). Absent = read on every path. The panel
+ *   hides a parameter no selected variant uses. Semantics and upkeep: src/mechanics/relevance.js.
  */
+
+// Shared `usedBy` clauses. Each names the family whose code reads the parameter; gating by a
+// parent family (e.g. matching only exists under posted trades) comes from FAMILY_REQUIRES.
+/** Read only by the posted-trades engine: TradeManager, Trade, and Human's build/trade/labour code. */
+const POSTED = [{exchange: ['postedTrades']}];
+/** Read only by the pairwise engine. */
+const PAIRWISE = [{exchange: ['pairwise']}];
+/** Read by every reproduction variant that makes children. */
+const REPRODUCING = [{reproduction: ['asexualSplit', 'asexualSplitCooldown', 'sexualBlend']}];
+/** Read by the terrain generators built from the wavy noise field. */
+const WAVY_TERRAIN = [{terrain: ['wavy', 'regionalGroupsWavy']}];
+/** Declared for config compatibility, but read by nothing. */
+const UNREAD = [];
 
 /** @type {Record<string, ParamSpec>} */
 export const PARAM_SCHEMA = {
@@ -54,8 +70,8 @@ export const PARAM_SCHEMA = {
     forestheight: {default: 600,  type: 'int',   min: 1, group: 'environment', doc: 'World height in px.'},
     numResources: {default: 3,    type: 'int',   min: 1, group: 'environment',
         doc: 'Number of tradeable resources. The forest renderer blends palette colours additively.'},
-    roughness:        {default: 1,   type: 'float', min: 0, group: 'environment', doc: 'Spatial frequency of the resource noise field.'},
-    undulation_cutuff:{default: 0.4, type: 'float', min: 0, max: 1, group: 'environment',
+    roughness:        {usedBy: WAVY_TERRAIN, default: 1,   type: 'float', min: 0, group: 'environment', doc: 'Spatial frequency of the resource noise field.'},
+    undulation_cutuff:{usedBy: WAVY_TERRAIN, default: 0.4, type: 'float', min: 0, max: 1, group: 'environment',
         doc: 'Threshold below which concentration is zeroed. Higher = patchier, more separated regions. [sic: spelling preserved for config compatibility]'},
     resourceDepletion:     {default: true,   type: 'bool',  group: 'environment', doc: 'Enable harvest depletion and regrowth.'},
     resourceDepletionRate: {default: 0.02,   type: 'float', min: 0, group: 'environment', doc: 'Concentration removed per unit harvested.'},
@@ -71,74 +87,86 @@ export const PARAM_SCHEMA = {
     production_max: {default: 3,       type: 'float', min: 0, group: 'agents', doc: 'Upper bound of the initial productivity draw.'},
     basicEnergyDepletion: {default: 0.023, type: 'float', min: 0, group: 'agents', doc: 'Metabolic cost per tick.'},
     workEnergyCost:       {default: 2,     type: 'float', min: 0, group: 'agents', doc: 'Energy cost of producing or labouring.'},
-    numAlternativeResources: {default: 1, type: 'int', min: 0, group: 'agents',
+    numAlternativeResources: {usedBy: POSTED, default: 1, type: 'int', min: 0, group: 'agents',
         doc: 'Non-metabolic resources. Index 0 is labour, the currency of norm construction.'},
-    production_labor_threshold: {default: 0.75, type: 'float', min: 0, group: 'agents',
+    production_labor_threshold: {usedBy: POSTED, default: 0.75, type: 'float', min: 0, group: 'agents',
         doc: 'Production potential below which an agent labours instead. Sets the laborer/producer split.'},
-    laborPerCycle:  {default: 4,  type: 'float', min: 0, group: 'agents', doc: 'Labour produced per labouring tick.'},
-    reproductionEnergyThreshold: {default: 90,  type: 'float', min: 0, group: 'agents', doc: 'Total energy at which an agent splits.'},
-    reproductionMutationRate:    {default: 0.1, type: 'float', min: 0, group: 'agents', doc: 'Trait mutation sd, as a fraction of the trait value.'},
-    social_reach_multiplier:     {default: 0.4, type: 'float', min: 0, group: 'agents', doc: 'Scales the right-skewed social-reach draw.'},
-    reproductionCooldownTicks: {default: 0, type: 'int', min: 0, group: 'agents',
+    laborPerCycle:  {usedBy: POSTED, default: 4,  type: 'float', min: 0, group: 'agents', doc: 'Labour produced per labouring tick.'},
+    reproductionEnergyThreshold: {usedBy: REPRODUCING, default: 90,  type: 'float', min: 0, group: 'agents', doc: 'Total energy at which an agent splits.'},
+    reproductionMutationRate:    {usedBy: REPRODUCING, default: 0.1, type: 'float', min: 0, group: 'agents', doc: 'Trait mutation sd, as a fraction of the trait value.'},
+    // Reach is read by posted trades (visibility, build cost, friction), by the reach-based
+    // link rules, and by sexualBlend's mate search. It is inert under parentNearest.
+    social_reach_multiplier: {
+        usedBy: [
+            {exchange: ['postedTrades']},
+            {linkFormation: ['localProbability', 'triadicClosure', 'usageRewiring']},
+            {reproduction: ['sexualBlend']},
+        ],
+        default: 0.4, type: 'float', min: 0, group: 'agents', doc: 'Scales the right-skewed social-reach draw.'},
+    reproductionCooldownTicks: {usedBy: [{reproduction: ['asexualSplitCooldown']}], default: 0, type: 'int', min: 0, group: 'agents',
         doc: 'Ticks an agent must wait after a birth event (its own or as a parent) before reproducing again. Used by the asexualSplitCooldown reproduction variant; 0 = no cooldown (ignored by the historical default variant).'},
-    numVillages: {default: 2, type: 'int', min: 1, group: 'agents',
+    numVillages: {
+        usedBy: [{population: ['villages']}, {terrain: ['regionalGroups', 'regionalGroupsWavy', 'regionalGroupsRandom']}],
+        default: 2, type: 'int', min: 1, group: 'agents',
         doc: 'Number of founding communities, for the villages population-placement variant and the matching regionalGroups terrain generator. Unused by the historical default (uniform placement).'},
-    villageSpread: {default: 60, type: 'float', min: 0, group: 'agents',
+    villageSpread: {usedBy: [{population: ['villages']}], default: 60, type: 'float', min: 0, group: 'agents',
         doc: 'Standard deviation (px) of each founding village\'s 2D Gaussian spawn cluster. Used only by the villages population-placement variant.'},
-    dietWellFedShare: {default: 0.5, type: 'float', min: 0, max: 1, group: 'agents',
+    dietWellFedShare: {usedBy: [{metabolism: ['dietBalance']}], default: 0.5, type: 'float', min: 0, max: 1, group: 'agents',
         doc: 'Fraction of a resource\'s per-resource energy cap an agent must hold to count that resource as satisfied, for the dietBalance metabolism variant\'s production multiplier. Unused by the historical default (classic) metabolism.'},
 
     // ---- trading ---------------------------------------------------------------------
-    tradeAmountPerInvocation: {default: 1, type: 'float', min: 0.1, group: 'trading',
+    tradeAmountPerInvocation: {usedBy: [{exchange: ['postedTrades', 'pairwise']}], default: 1, type: 'float', min: 0.1, group: 'trading',
         doc: 'Units of resource moved per trade invocation. Higher = agents swap supply faster per tick.'},
-    laborPerResourceUnit: {default: 0.2, type: 'float', min: 0, group: 'trading', doc: 'Labour consumed per unit of resource moved.'},
-    fixTradeSurplusRatio: {default: true, type: 'bool', group: 'trading', doc: 'Hold Ain/Bin constant across trades.'},
-    surplus_multiplier:   {default: 0.2, type: 'float', min: 0, group: 'trading',
+    laborPerResourceUnit: {usedBy: UNREAD, default: 0.2, type: 'float', min: 0, group: 'trading',
+        doc: 'Intended as labour consumed per unit of resource moved. Only sets Trade.laborRequired and decrements Trade.labor, neither of which is ever read, so it has no effect.'},
+    fixTradeSurplusRatio: {usedBy: UNREAD, default: true, type: 'bool', group: 'trading',
+        doc: 'Intended to hold Ain/Bin constant across trades. Read by nothing, so it has no effect.'},
+    surplus_multiplier:   {usedBy: [{pricing: ['dispersionSpread', 'fixedMargin']}], default: 0.2, type: 'float', min: 0, group: 'trading',
         doc: 'Spread as a multiple of local valuation dispersion. The inventor\'s margin, and the fuel for hierarchy.'},
-    build_labor_per_reach: {default: 0.35, type: 'float', min: 0, group: 'trading', doc: 'Labour cost of founding a trade, per sqrt(reach).'},
-    expected_volume_multiplier: {default: 2, type: 'float', min: 0, group: 'trading', doc: 'Scales the projected volume used in the build decision.'},
-    clear_trades_every: {default: 50, type: 'int', min: 1, group: 'trading',
+    build_labor_per_reach: {usedBy: POSTED, default: 0.35, type: 'float', min: 0, group: 'trading', doc: 'Labour cost of founding a trade, per sqrt(reach).'},
+    expected_volume_multiplier: {usedBy: POSTED, default: 2, type: 'float', min: 0, group: 'trading', doc: 'Scales the projected volume used in the build decision.'},
+    clear_trades_every: {usedBy: POSTED, default: 50, type: 'int', min: 1, group: 'trading',
         doc: 'Ticks between cleanup passes. Also the window an unused trade survives — a strong confound for lifespan analysis.'},
-    royalty: {default: 1, type: 'float', min: 0, group: 'trading', doc: 'Reserved. Currently unread by the kernel.'},
-    min_rate_improvement: {default: 0, type: 'float', min: 0, max: 1, group: 'trading',
+    royalty: {usedBy: UNREAD, default: 1, type: 'float', min: 0, group: 'trading', doc: 'Reserved. Currently unread by the kernel.'},
+    min_rate_improvement: {usedBy: POSTED, default: 0, type: 'float', min: 0, max: 1, group: 'trading',
         doc: 'Fractional improvement over the best local rate required to justify building. 0 admits all. A competition-intensity axis.'},
-    tradeLoyaltyThreshold: {default: 0, type: 'float', min: 0, max: 1, group: 'trading',
+    tradeLoyaltyThreshold: {usedBy: [{tradeSelection: ['bestRate']}], default: 0, type: 'float', min: 0, max: 1, group: 'trading',
         doc: 'Switching cost for the bestRate trade-selection mechanic. 0 = pure rate optimization; higher = agents stick with their current trade unless a competitor is better by this fraction.'},
-    tradeFrictionSteepness: {default: 3, type: 'float', min: 0, group: 'trading',
+    tradeFrictionSteepness: {usedBy: [{matching: ['distanceFriction']}], default: 3, type: 'float', min: 0, group: 'trading',
         doc: 'How fast pairwise trade friction ramps with distance, for the distanceFriction matching mechanic. Unused by the historical default (frictionless).'},
-    tradeFrictionMaxFraction: {default: 0.9, type: 'float', min: 0, max: 1, group: 'trading',
+    tradeFrictionMaxFraction: {usedBy: [{matching: ['distanceFriction']}], default: 0.9, type: 'float', min: 0, max: 1, group: 'trading',
         doc: 'Cap on the fraction of a match withheld to distance friction, for the distanceFriction matching mechanic. Unused by the historical default (frictionless).'},
 
     // ---- hierarchy -------------------------------------------------------------------
-    inventorPerpetualRoyalty: {default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',
+    inventorPerpetualRoyalty: {usedBy: POSTED, default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',
         doc: 'Share of surplus the inventor keeps after the trade is managed. 0 sends it all to the trade supply.'},
-    minTradeSupplyForHierarchy: {default: 1, type: 'float', min: 0, group: 'hierarchy',
+    minTradeSupplyForHierarchy: {usedBy: POSTED, default: 1, type: 'float', min: 0, group: 'hierarchy',
         doc: 'Supply a trade must hold before a higher-level trade may target it.'},
-    hierarchicalTradeCostMultiplier: {default: 0.1, type: 'float', min: 0, group: 'hierarchy',
+    hierarchicalTradeCostMultiplier: {usedBy: POSTED, default: 0.1, type: 'float', min: 0, group: 'hierarchy',
         doc: 'Build cost of a level-2+ trade, relative to level-1.'},
 
     // ---- network (read only under the `pairwise` exchange mechanic) --------------------
-    linkProbability: {default: 0.3, type: 'float', min: 0, max: 1, group: 'network',
+    linkProbability: {usedBy: [{linkFormation: ['localProbability', 'usageRewiring']}], default: 0.3, type: 'float', min: 0, max: 1, group: 'network',
         doc: 'Chance a newborn links to each agent within reach (the larger of the two reaches), under the localProbability and usageRewiring link-formation mechanics. 1 = everyone in reach.'},
-    linksPerBirth: {default: 2, type: 'int', min: 1, group: 'network',
-        doc: 'Links a newborn forms under triadicClosure: its parent, then linksPerBirth-1 of the parent\'s neighbours (topped up from agents within reach).'},
-    valuationHopMarkup: {default: 0.2, type: 'float', min: 0, group: 'network',
+    linksPerBirth: {usedBy: [{linkFormation: ['triadicClosure', 'parentNearest']}], default: 2, type: 'int', min: 1, group: 'network',
+        doc: 'Links a newborn forms under triadicClosure (parent, then linksPerBirth-1 of the parent\'s neighbours, topped up from agents within reach) and parentNearest (parent, then the linksPerBirth-1 nearest agents).'},
+    valuationHopMarkup: {usedBy: PAIRWISE, default: 0.2, type: 'float', min: 0, group: 'network',
         doc: 'Per-hop discount (log units) when a neighbour\'s valuation propagates into an agent\'s effective valuation. Sets how far demand is felt (about maxNeed/markup hops) and the margin a broker earns per hop. Keep above minExchangeLogGap or relay chains stall.'},
-    minExchangeLogGap: {default: 0.05, type: 'float', min: 0, group: 'network',
+    minExchangeLogGap: {usedBy: PAIRWISE, default: 0.05, type: 'float', min: 0, group: 'network',
         doc: 'Smallest difference in two neighbours\' log marginal rates of substitution that triggers a swap. A transaction threshold; 0 swaps on any disagreement.'},
-    flowMemoryTicks: {default: 100, type: 'int', min: 1, group: 'network',
+    flowMemoryTicks: {usedBy: PAIRWISE, default: 100, type: 'int', min: 1, group: 'network',
         doc: 'E-folding time of each edge\'s recent-flow record. Drives the resource-flow view and the usageRewiring introduction rule.'},
-    linkIdleTicks: {default: 300, type: 'int', min: 1, group: 'network',
+    linkIdleTicks: {usedBy: [{linkFormation: ['usageRewiring']}], default: 300, type: 'int', min: 1, group: 'network',
         doc: 'Under usageRewiring, a link that carries no flow for this long is dropped. New links get this long to prove themselves.'},
-    linkIntroductionProbability: {default: 0.05, type: 'float', min: 0, max: 1, group: 'network',
+    linkIntroductionProbability: {usedBy: [{linkFormation: ['usageRewiring']}], default: 0.05, type: 'float', min: 0, max: 1, group: 'network',
         doc: 'Under usageRewiring, per-agent per-tick chance of linking the supplier and customer the agent relays the most of one resource between, if they are within reach of each other.'},
 
     // ---- experimental controls (default to current behaviour) ------------------------
-    maxTradeLevel: {default: null, type: 'int', min: 0, group: 'hierarchy',
+    maxTradeLevel: {usedBy: POSTED, default: null, type: 'int', min: 0, group: 'hierarchy',
         doc: 'Hierarchy depth cap. null = unlimited, 0 = no trades at all, 1 = level-1 only. The control condition for "does hierarchy pay?".'},
-    surplusToTradeFraction: {default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',
+    surplusToTradeFraction: {usedBy: POSTED, default: 0, type: 'float', min: 0, max: 1, group: 'hierarchy',
         doc: 'Share of surplus pooled in the trade even while the inventor lives. At 0, hierarchy can only bootstrap after the founder dies — see RESEARCH.md 4b.'},
-    founderGhostReach: {default: true, type: 'bool', group: 'hierarchy',
+    founderGhostReach: {usedBy: POSTED, default: true, type: 'bool', group: 'hierarchy',
         doc: 'Whether a dead inventor keeps projecting reach for their trade. True preserves historical behaviour.'},
 };
 

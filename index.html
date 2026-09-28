@@ -271,7 +271,7 @@
                         <span class="param-val" id="linkProbability_val"></span>
                     </div>
                     <div class="param-row">
-                        <span class="param-label">Links per birth (triadic)</span>
+                        <span class="param-label">Links per birth (n)</span>
                         <input type="range" id="linksPerBirth" min="1" max="10" step="1"
                                oninput="document.getElementById('linksPerBirth_val').textContent=this.value">
                         <span class="param-val" id="linksPerBirth_val"></span>
@@ -326,6 +326,7 @@
                 <select id="mechanic_linkFormation" style="width:140px">
                     <option value="localProbability">localProbability</option>
                     <option value="triadicClosure">triadicClosure</option>
+                    <option value="parentNearest">parentNearest</option>
                     <option value="usageRewiring">usageRewiring</option>
                 </select>
             </div>
@@ -385,6 +386,7 @@
                     <option value="slabs">slabs</option>
                     <option value="regionalGroups">regionalGroups</option>
                     <option value="regionalGroupsWavy">regionalGroupsWavy</option>
+                    <option value="regionalGroupsRandom">regionalGroupsRandom</option>
                     <option value="uniform">uniform</option>
                 </select>
             </div>

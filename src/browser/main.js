@@ -19,6 +19,7 @@ import {BrowserApp} from './app.js';
 import {gameEngine, toggleRunning, setRunning} from './context.js';
 import {readParameterInputs, writeParameterInputs, readMechanicInputs} from './domutil.js';
 import {defaultParams} from '../core/params.js';
+import {refreshParameterPanel, watchMechanicSelectors} from './parampanel.js';
 
 let app = null;
 
@@ -33,6 +34,7 @@ function boot() {
     // rather than the parameter's default — which would silently start the simulation on a
     // configuration nobody chose.
     writeParameterInputs(defaultParams());
+    watchMechanicSelectors();
 
     reset();
     app.start();
@@ -55,6 +57,7 @@ function reset(base) {
     app.reset(Object.assign({}, base, readParameterInputs()), readMechanicInputs());
     writeParameterInputs(app.sim.params);
     refreshOverlayButtons();
+    refreshParameterPanel();
 }
 
 /**
@@ -74,6 +77,9 @@ function loadFullParams(params) {
     app.reset(full, readMechanicInputs());
     writeParameterInputs(app.sim.params);
     refreshOverlayButtons();
+    // The caller (loadConfigByIndex) set the selectors programmatically, which fires no
+    // `change` event, so the panel must be re-shaped here.
+    refreshParameterPanel();
 }
 
 function resetNewSeed() {

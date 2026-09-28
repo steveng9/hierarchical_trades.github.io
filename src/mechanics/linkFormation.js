@@ -17,7 +17,8 @@
  * Two agents are candidates for a link when their distance is below the LARGER of their two
  * social reaches: a high-reach agent can link to a low-reach newborn it can see, even if the
  * newborn cannot see it. Networks stay local for ordinary agents, with long links only where
- * someone has the reach to sustain them.
+ * someone has the reach to sustain them. (`parentNearest` alone ignores reach: it links by
+ * rank of distance, so every agent gets the same number of links wherever it stands.)
  */
 import {distance} from '../core/mathutil.js';
 
@@ -47,6 +48,23 @@ export function reachCandidates(human, {world, network}) {
 /** Whether two agents are within the larger of their reaches of each other. */
 export function withinLargerReach(a, b, world) {
     return distance(a, b, world.wrapDims()) < Math.max(a.socialReach, b.socialReach);
+}
+
+/**
+ * The `k` living network members nearest `human` (torus-aware), ties broken by id, excluding
+ * `human`, anyone in `exclude`, and anyone marked for removal. A full scan: this runs once per
+ * birth, and a scan of ~1000 agents is cheaper than growing a grid query until it holds k.
+ */
+export function nearestMembers(human, k, {world, network}, exclude = new Set()) {
+    if (k <= 0) return [];
+    const wrap = world.wrapDims();
+    const ranked = [];
+    for (const other of world.humans) {
+        if (other === human || other.removeFromWorld || exclude.has(other) || !network.hasNode(other)) continue;
+        ranked.push({other, d: distance(human, other, wrap)});
+    }
+    ranked.sort((p, q) => p.d - q.d || p.other.id - q.other.id);
+    return ranked.slice(0, k).map(r => r.other);
 }
 
 /** The first living parent of `human`, or null (founders, orphans). */
@@ -128,6 +146,34 @@ export const LINK_FORMATION = {
                 for (const other of sampleWithoutReplacement(local, shortfall, sim.rng)) {
                     network.link(human, other, sim.tick);
                 }
+            }
+        },
+        onTick() {},
+    },
+
+    /**
+     * Parent + nearest: exactly `linksPerBirth` links wherever enough agents exist. The
+     * newborn links to its living parent, then to the `linksPerBirth - 1` agents nearest to
+     * it. A founder (or orphan) links to its `linksPerBirth` nearest instead.
+     *
+     * Reach plays no part, so every agent has the same number of birth links: degree differences
+     * come only from being chosen by later newborns, i.e. from where births happen. This is
+     * the control for the reach-based rules. Any hub it grows is made by geography and
+     * fertility, not by an agent's reach trait.
+     */
+    parentNearest: {
+        onHumanAdded(human, ctx) {
+            const {sim, world, network} = ctx;
+            let remaining = sim.params.linksPerBirth;
+            const parent = livingParent(human, world);
+            const exclude = new Set();
+            if (parent && network.hasNode(parent)) {
+                network.link(human, parent, sim.tick);
+                exclude.add(parent);
+                remaining--;
+            }
+            for (const other of nearestMembers(human, remaining, ctx, exclude)) {
+                network.link(human, other, sim.tick);
             }
         },
         onTick() {},

@@ -5,17 +5,18 @@ import {Simulation} from '../src/core/simulation.js';
 import {MATCHING} from '../src/mechanics/matching.js';
 import {TERRAIN_GENERATORS} from '../src/mechanics/terrain.js';
 import {Random} from '../src/core/rng.js';
+import {withActivatingParents} from '../src/mechanics/relevance.js';
 
 const small = {seed: 5, initialHumans: 100, forestwidth: 400, forestheight: 300};
 
 /**
- * A config exercising one variant. `linkFormation` is only read under the pairwise exchange,
- * so its variants are run there; everywhere else they would be silently inert.
+ * A config exercising one variant, with whatever parent choices make its family active
+ * (link formation is only read under the pairwise exchange, for instance): elsewhere the
+ * variant would be silently inert.
  */
 function variantConfig(mechanic, variant) {
     if (mechanic === 'terrain') return {params: small, terrain: variant};
-    if (mechanic === 'linkFormation') return {params: small, mechanics: {exchange: 'pairwise', linkFormation: variant}};
-    return {params: small, mechanics: {[mechanic]: variant}};
+    return {params: small, mechanics: withActivatingParents({[mechanic]: variant})};
 }
 
 test('defaults resolve', () => {

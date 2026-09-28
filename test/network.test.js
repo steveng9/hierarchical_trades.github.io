@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SocialNetwork, edgeKey} from '../src/core/network.js';
-import {LINK_FORMATION, strongestRelay} from '../src/mechanics/linkFormation.js';
+import {LINK_FORMATION, strongestRelay, nearestMembers} from '../src/mechanics/linkFormation.js';
 import {Simulation} from '../src/core/simulation.js';
 import {EVENTS} from '../src/core/events.js';
 import {distance} from '../src/core/mathutil.js';
@@ -138,6 +138,32 @@ test('triadicClosure: each newborn links to its parent and closes triangles thro
     sim.run(400);
     assert.ok(births > 20, `need births, got ${births}`);
     assert.ok(closedTriangle / births > 0.5, `only ${closedTriangle}/${births} births closed a triangle`);
+});
+
+test('parentNearest: each newborn links to its parent and exactly its n-1 nearest, reach ignored', () => {
+    const n = 4;
+    const sim = new Simulation({params: {...small, linksPerBirth: n, reproductionEnergyThreshold: 60},
+        mechanics: pairwise('parentNearest')});
+    const net = sim.world.exchange.network;
+    let births = 0;
+    sim.events.on(EVENTS.HUMAN_BORN, ({human, parent}) => {
+        births++;
+        assert.ok(net.edgeBetween(human, parent), 'newborn must link to its parent');
+        assert.equal(net.degree(human), n);
+        const expected = nearestMembers(human, n - 1, {world: sim.world, network: net}, new Set([parent]));
+        for (const other of expected) assert.ok(net.edgeBetween(human, other), 'must link to the nearest agents');
+    });
+    sim.run(300);
+    assert.ok(births > 20, `need births, got ${births}`);
+});
+
+test('parentNearest founders each link to their n nearest earlier founders', () => {
+    const sim = new Simulation({params: {...small, linksPerBirth: 3, social_reach_multiplier: 0}, mechanics: pairwise('parentNearest')});
+    const net = sim.world.exchange.network;
+    const founders = sim.world.humans;
+    // Wiring is sequential, so every founder after the third made 3 links; nobody is isolated.
+    assert.ok(founders.every(h => net.degree(h) >= 3));
+    assert.equal(net.edgeCount, 0 + 1 + 2 + 3 * (founders.length - 3));
 });
 
 test('usageRewiring drops links idle longer than linkIdleTicks, and introduces new ones', () => {

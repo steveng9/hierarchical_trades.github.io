@@ -120,6 +120,12 @@ button {
     border: 1px solid black;
 }
 
+/* The panel hides controls the selected mechanics don't use (src/browser/parampanel.js).
+   Without this, a class rule like `.param-row {display: flex}` beats the `hidden` attribute. */
+[hidden] {
+    display: none !important;
+}
+
 /* Compact parameter rows */
 .param-row {
     display: flex;
