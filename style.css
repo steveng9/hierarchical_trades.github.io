@@ -223,3 +223,31 @@ button {
 }
 #saved_configs_list { max-height: 140px; overflow-y: auto; }
 .no-configs { font-size: 11px; color: #999; }
+
+/* Custom tooltips: add data-tooltip="..." to any .param-row, .check-row, or selector row */
+[data-tooltip] {
+    position: relative;
+}
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0;
+    top: calc(100% + 3px);
+    z-index: 9999;
+    background: #1a1a1a;
+    color: #f0f0f0;
+    padding: 5px 9px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-family: Arial, sans-serif;
+    white-space: normal;
+    width: 240px;
+    line-height: 1.45;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+[data-tooltip]:hover::after {
+    opacity: 1;
+}

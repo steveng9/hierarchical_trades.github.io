@@ -19,11 +19,11 @@
             <div class="column">
                 <div class="parameter-section">
                     <h3>Sim</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="RNG seed; identical seed + same params = bit-for-bit identical run">
                         <span class="param-label">Seed</span>
                         <input type="number" id="seed" min="0" step="1" style="width:80px">
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Simulation ticks computed per rendered frame; higher = faster wall-clock speed but choppier display">
                         <span class="param-label">Speed (upd/draw)</span>
                         <!-- step="1": with min="1" step="10" the legal positions were 1, 11, 21, ...,
                              so the default of 10 snapped to 11 and the sim silently ran at 11. -->
@@ -35,63 +35,63 @@
 
                 <div class="parameter-section">
                     <h3>Forest</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Number of distinct tradeable commodities; forest view blends their concentrations additively">
                         <span class="param-label">Num resources</span>
                         <input type="range" id="numResources" min="1" max="8" step="1" value="3"
                                oninput="document.getElementById('numResources_val').textContent=this.value">
                         <span class="param-val" id="numResources_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="World-grid cell size in px; smaller = finer-grained resource landscape, more cells to track">
                         <span class="param-label">Cell size</span>
                         <input type="range" id="cellSize" min="5" max="100" step="5"
                                oninput="document.getElementById('cellSize_val').textContent=this.value">
                         <span class="param-val" id="cellSize_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Spatial frequency of the noise field; higher = tighter, more fragmented resource regions (wavy terrain only)">
                         <span class="param-label">Roughness</span>
                         <input type="range" id="roughness" min="0" max="3" step="0.1"
                                oninput="document.getElementById('roughness_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="roughness_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Noise threshold: values below this are zeroed; higher = patchier, more isolated resource regions with empty space between them (wavy terrain only)">
                         <span class="param-label">Undulation cutoff</span>
                         <input type="range" id="undulation_cutuff" min="0" max="0.9" step="0.05"
                                oninput="document.getElementById('undulation_cutuff_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="undulation_cutuff_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Founding population size spawned at Reset">
                         <span class="param-label">Initial humans</span>
                         <input type="range" id="initialHumans" min="20" max="500" step="10"
                                oninput="document.getElementById('initialHumans_val').textContent=this.value">
                         <span class="param-val" id="initialHumans_val"></span>
                     </div>
-                    <div class="check-row">
+                    <div class="check-row" data-tooltip="When on, harvesting depletes cell concentration and it regrows slowly; when off, resources are infinite">
                         <input type="checkbox" id="resourceDepletion">
                         <span>Resource depletion</span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Concentration removed per unit harvested; higher = patches exhaust faster">
                         <span class="param-label">Depletion rate</span>
                         <input type="range" id="resourceDepletionRate" min="0.01" max="0.5" step="0.01"
                                oninput="document.getElementById('resourceDepletionRate_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="resourceDepletionRate_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Concentration restored per cell per tick back toward the baseline grid; balances depletion">
                         <span class="param-label">Regen rate</span>
                         <input type="range" id="resourceRegenRate" min="0.0001" max="0.030" step="0.0001"
                                oninput="document.getElementById('resourceRegenRate_val').textContent=parseFloat(this.value).toFixed(4)">
                         <span class="param-val" id="resourceRegenRate_val"></span>
                     </div>
-                    <div class="check-row">
+                    <div class="check-row" data-tooltip="Wrap the map into a torus (left-right and top-bottom connected); agents near opposite edges can see, link, and trade with each other">
                         <input type="checkbox" id="wrapped">
                         <span>Wrapped (torus) world</span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Number of founding communities (villages population mechanic) or resource regions (regionalGroups terrain variants)">
                         <span class="param-label">Num villages</span>
                         <input type="range" id="numVillages" min="1" max="6" step="1"
                                oninput="document.getElementById('numVillages_val').textContent=this.value">
                         <span class="param-val" id="numVillages_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Gaussian spawn radius in px per founding village; larger = wider initial scatter within each community">
                         <span class="param-label">Village spread (px)</span>
                         <input type="range" id="villageSpread" min="10" max="300" step="5"
                                oninput="document.getElementById('villageSpread_val').textContent=this.value">
@@ -101,67 +101,67 @@
 
                 <div class="parameter-section">
                     <h3>Humans</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Baseline metabolic drain per tick; sets survival pressure independent of any work or trading">
                         <span class="param-label">Energy depletion</span>
                         <input type="range" id="basicEnergyDepletion" min="0.001" max="0.05" step="0.001"
                                oninput="document.getElementById('basicEnergyDepletion_val').textContent=parseFloat(this.value).toFixed(3)">
                         <span class="param-val" id="basicEnergyDepletion_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Agents with productivity below this threshold become laborers instead of producers; controls the laborer/producer ratio (postedTrades only)">
                         <span class="param-label">Labor threshold</span>
                         <input type="range" id="production_labor_threshold" min="0" max="1" step="0.05"
                                oninput="document.getElementById('production_labor_threshold_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="production_labor_threshold_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Units of labour produced per labouring tick; labour is the currency of norm construction (postedTrades only)">
                         <span class="param-label">Labor / cycle</span>
                         <input type="range" id="laborPerCycle" min="0.1" max="5" step="0.1"
                                oninput="document.getElementById('laborPerCycle_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="laborPerCycle_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Energy cost per tick of producing resources or labouring; higher = more pressure to trade rather than self-supply">
                         <span class="param-label">Work energy cost</span>
                         <input type="range" id="workEnergyCost" min="0.1" max="5" step="0.1"
                                oninput="document.getElementById('workEnergyCost_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="workEnergyCost_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Upper bound of the initial productivity draw; sets heterogeneity range in the founding population">
                         <span class="param-label">Production max</span>
                         <input type="range" id="production_max" min="0.5" max="20" step="0.5"
                                oninput="document.getElementById('production_max_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="production_max_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Mean lifespan in ticks (Gaussian, sd = mean/20); slider range is far below the default of 1,000,000 (effectively infinite)">
                         <span class="param-label">Max age (ticks)</span>
                         <input type="range" id="maxHumanAge" min="100" max="10000" step="100"
                                oninput="document.getElementById('maxHumanAge_val').textContent=this.value">
                         <span class="param-val" id="maxHumanAge_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Total energy an agent must accumulate across all resources to trigger reproduction">
                         <span class="param-label">Repro. threshold</span>
                         <input type="range" id="reproductionEnergyThreshold" min="20" max="100" step="0.2"
                                oninput="document.getElementById('reproductionEnergyThreshold_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="reproductionEnergyThreshold_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Multiplicative Gaussian mutation rate on heritable traits (socialReach, productivity); higher = faster evolution">
                         <span class="param-label">Mutation rate</span>
                         <input type="range" id="reproductionMutationRate" min="0" max="0.5" step="0.01"
                                oninput="document.getElementById('reproductionMutationRate_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="reproductionMutationRate_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Scales each agent's right-skewed social-reach draw; sets trade visibility range, mate-search radius, and network-link reach">
                         <span class="param-label">Social reach mult.</span>
                         <input type="range" id="social_reach_multiplier" min="0.01" max="2" step="0.01"
                                oninput="document.getElementById('social_reach_multiplier_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="social_reach_multiplier_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Minimum ticks between births per agent (asexualSplitCooldown reproduction only); 0 = no rate limit">
                         <span class="param-label">Repro. cooldown (ticks)</span>
                         <input type="range" id="reproductionCooldownTicks" min="0" max="1000" step="10"
                                oninput="document.getElementById('reproductionCooldownTicks_val').textContent=this.value">
                         <span class="param-val" id="reproductionCooldownTicks_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Fraction of per-resource energy cap needed to count that resource as well-fed for the production multiplier (dietBalance metabolism only)">
                         <span class="param-label">Diet well-fed share</span>
                         <input type="range" id="dietWellFedShare" min="0" max="1" step="0.05"
                                oninput="document.getElementById('dietWellFedShare_val').textContent=parseFloat(this.value).toFixed(2)">
@@ -174,59 +174,59 @@
             <div class="column">
                 <div class="parameter-section">
                     <h3>Trading</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Units of resource moved per trade invocation; higher = faster per-tick resource flow across trades">
                         <span class="param-label">Trade amount / invoc.</span>
                         <input type="range" id="tradeAmountPerInvocation" min="0.1" max="10" step="0.1"
                                oninput="document.getElementById('tradeAmountPerInvocation_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="tradeAmountPerInvocation_val"></span>
                     </div>
-                    <div class="check-row">
+                    <div class="check-row" data-tooltip="Intended to hold exchange ratios constant across invocations; currently unread by the kernel and has no effect">
                         <input type="checkbox" id="fixTradeSurplusRatio">
                         <span>Fix surplus ratio</span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Intended as labour consumed per unit of resource traded; currently unread by the kernel and has no effect">
                         <span class="param-label">Labor / resource unit</span>
                         <input type="range" id="laborPerResourceUnit" min="0.01" max="1" step="0.01"
                                oninput="document.getElementById('laborPerResourceUnit_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="laborPerResourceUnit_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Inventor margin as a multiple of local valuation dispersion; the primary knob for how much rent a trade captures and thus how readily hierarchy bootstraps">
                         <span class="param-label">Surplus multiplier</span>
                         <input type="range" id="surplus_multiplier" min="0.01" max="0.5" step="0.01"
                                oninput="document.getElementById('surplus_multiplier_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="surplus_multiplier_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Labour cost to found a trade per sqrt(reach); penalizes wide-broadcast trades and gates who can afford to build">
                         <span class="param-label">Build labor / reach</span>
                         <input type="range" id="build_labor_per_reach" min="0" max="2" step="0.05"
                                oninput="document.getElementById('build_labor_per_reach_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="build_labor_per_reach_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Scales the projected trade volume used in the build decision; higher = inventor is more optimistic about expected return">
                         <span class="param-label">Exp. volume mult.</span>
                         <input type="range" id="expected_volume_multiplier" min="0.5" max="10" step="0.5"
                                oninput="document.getElementById('expected_volume_multiplier_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="expected_volume_multiplier_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Ticks between trade cleanup passes; also the quiet window an unused trade survives before retirement (idleWindow lifecycle)">
                         <span class="param-label">Clear trades every</span>
                         <input type="range" id="clear_trades_every" min="10" max="500" step="10"
                                oninput="document.getElementById('clear_trades_every_val').textContent=this.value">
                         <span class="param-val" id="clear_trades_every_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Reserved field; currently unread by the kernel and has no effect on dynamics">
                         <span class="param-label">Royalty</span>
                         <input type="range" id="royalty" min="0" max="5" step="0.5"
                                oninput="document.getElementById('royalty_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="royalty_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="How fast distance friction ramps as a function of pairwise distance relative to social reach (distanceFriction matching only)">
                         <span class="param-label">Trade friction steepness</span>
                         <input type="range" id="tradeFrictionSteepness" min="0" max="10" step="0.1"
                                oninput="document.getElementById('tradeFrictionSteepness_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="tradeFrictionSteepness_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Maximum fraction of a match payout withheld to distance cost; withheld portion goes to trade supply (distanceFriction matching only)">
                         <span class="param-label">Trade friction max frac.</span>
                         <input type="range" id="tradeFrictionMaxFraction" min="0" max="1" step="0.05"
                                oninput="document.getElementById('tradeFrictionMaxFraction_val').textContent=parseFloat(this.value).toFixed(2)">
@@ -236,25 +236,25 @@
 
                 <div class="parameter-section">
                     <h3>Hierarchical Trades</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Supply a lower-level trade must hold before a higher-level trade may target it as a customer">
                         <span class="param-label">Min supply for hier.</span>
                         <input type="range" id="minTradeSupplyForHierarchy" min="0" max="10" step="1"
                                oninput="document.getElementById('minTradeSupplyForHierarchy_val').textContent=this.value">
                         <span class="param-val" id="minTradeSupplyForHierarchy_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Build cost of a level-2+ trade relative to level-1; 0 = free hierarchy, high = hierarchy is expensive to construct">
                         <span class="param-label">Hier. cost mult.</span>
                         <input type="range" id="hierarchicalTradeCostMultiplier" min="0.0" max="5" step="0.1"
                                oninput="document.getElementById('hierarchicalTradeCostMultiplier_val').textContent=parseFloat(this.value).toFixed(1)">
                         <span class="param-val" id="hierarchicalTradeCostMultiplier_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Share of surplus the living inventor keeps from each invocation; 0 = all surplus pooled into trade supply, which is required for hierarchy to bootstrap from a dead founder">
                         <span class="param-label">Inventor royalty</span>
                         <input type="range" id="inventorPerpetualRoyalty" min="0" max="1" step="0.05"
                                oninput="document.getElementById('inventorPerpetualRoyalty_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="inventorPerpetualRoyalty_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Minimum fractional rate improvement over the best local rate required to justify founding a new trade; 0 = any improvement is sufficient, higher = stronger competition pressure">
                         <span class="param-label">Min rate improvement</span>
                         <input type="range" id="min_rate_improvement" min="0" max="1" step="0.05"
                                oninput="document.getElementById('min_rate_improvement_val').textContent=parseFloat(this.value).toFixed(2)">
@@ -264,43 +264,43 @@
 
                 <div class="parameter-section">
                     <h3>Network (pairwise exchange)</h3>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Chance a newborn links to each agent within reach; 1 = links to everyone in reach, 0 = no links at birth (localProbability and usageRewiring only)">
                         <span class="param-label">Link probability</span>
                         <input type="range" id="linkProbability" min="0" max="1" step="0.05"
                                oninput="document.getElementById('linkProbability_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="linkProbability_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Number of links formed at birth; triadicClosure: parent + linksPerBirth-1 friends-of-parent; parentNearest: parent + linksPerBirth-1 nearest agents">
                         <span class="param-label">Links per birth (n)</span>
                         <input type="range" id="linksPerBirth" min="1" max="10" step="1"
                                oninput="document.getElementById('linksPerBirth_val').textContent=this.value">
                         <span class="param-val" id="linksPerBirth_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Per-hop log-unit discount as demand propagates across network edges; sets broker margin and the effective reach of demand signals (keep above minExchangeLogGap or relay chains stall)">
                         <span class="param-label">Hop markup (log)</span>
                         <input type="range" id="valuationHopMarkup" min="0" max="2" step="0.05"
                                oninput="document.getElementById('valuationHopMarkup_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="valuationHopMarkup_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Minimum difference in log marginal rate of substitution between neighbors to trigger a swap; 0 = swap on any disagreement, higher = only clear mismatches trade">
                         <span class="param-label">Min swap gap (log)</span>
                         <input type="range" id="minExchangeLogGap" min="0" max="0.5" step="0.01"
                                oninput="document.getElementById('minExchangeLogGap_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="minExchangeLogGap_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="E-folding decay time of each link's recent-flow record; drives the resource-flow overlay and usageRewiring link-dropout decisions">
                         <span class="param-label">Flow memory (ticks)</span>
                         <input type="range" id="flowMemoryTicks" min="10" max="1000" step="10"
                                oninput="document.getElementById('flowMemoryTicks_val').textContent=this.value">
                         <span class="param-val" id="flowMemoryTicks_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Ticks without flow before a link is dropped under usageRewiring; also the proving period for every newly formed link">
                         <span class="param-label">Link idle limit (rewiring)</span>
                         <input type="range" id="linkIdleTicks" min="10" max="2000" step="10"
                                oninput="document.getElementById('linkIdleTicks_val').textContent=this.value">
                         <span class="param-val" id="linkIdleTicks_val"></span>
                     </div>
-                    <div class="param-row">
+                    <div class="param-row" data-tooltip="Per-agent per-tick probability of introducing a supplier and customer this agent relays the most of one resource between, if they are within reach of each other (usageRewiring only)">
                         <span class="param-label">Introduction prob. (rewiring)</span>
                         <input type="range" id="linkIntroductionProbability" min="0" max="0.5" step="0.01"
                                oninput="document.getElementById('linkIntroductionProbability_val').textContent=parseFloat(this.value).toFixed(2)">
@@ -314,94 +314,94 @@
         <!-- Mechanics selectors -->
         <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
             <h3>Mechanics</h3>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How trades happen; postedTrades = explicit invented norms with posted rates, managed supplies, and hierarchical stacking; pairwise = direct bilateral swaps on a social network, hierarchy emerges through hubs">
                 <span class="param-label">Exchange</span>
                 <select id="mechanic_exchange" style="width:140px">
-                    <option value="postedTrades">postedTrades</option>
-                    <option value="pairwise">pairwise</option>
+                    <option value="postedTrades" title="Trades are explicit invented objects: posted rates visible within reach, managed supplies, stacked into hierarchies; historical default">postedTrades</option>
+                    <option value="pairwise" title="Agents swap directly with network neighbors at rates from their own valuations; no trade objects, hierarchy emerges implicitly through broker hubs">pairwise</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How the pairwise social network is wired at birth and maintained over time (pairwise exchange only)">
                 <span class="param-label">Link formation</span>
                 <select id="mechanic_linkFormation" style="width:140px">
-                    <option value="localProbability">localProbability</option>
-                    <option value="triadicClosure">triadicClosure</option>
-                    <option value="parentNearest">parentNearest</option>
-                    <option value="usageRewiring">usageRewiring</option>
+                    <option value="localProbability" title="Each newborn links to each agent within reach with probability linkProbability; stable, strictly local network; historical default">localProbability</option>
+                    <option value="triadicClosure" title="Each newborn links to its parent then linksPerBirth-1 friends-of-parent; grows clustered, village-like cliques">triadicClosure</option>
+                    <option value="parentNearest" title="Each newborn links to its parent then the linksPerBirth-1 nearest agents; reach plays no role, purely geographic">parentNearest</option>
+                    <option value="usageRewiring" title="Wires like localProbability at birth; idle links drop after linkIdleTicks; brokers can introduce their supplier and customer to each other">usageRewiring</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How an agent chooses which trade to invoke for a given resource pair (postedTrades exchange only)">
                 <span class="param-label">Trade selection</span>
                 <select id="mechanic_tradeSelection" style="width:140px">
-                    <option value="invokeAll">invokeAll</option>
-                    <option value="bestRate">bestRate</option>
+                    <option value="invokeAll" title="Invoke every trade whose posted rate beats personal valuation; no ranking between competing trades; historical default">invokeAll</option>
+                    <option value="bestRate" title="Invoke only the single best-rate trade; with tradeLoyaltyThreshold > 0, agent sticks unless a competitor beats current rate by that fraction">bestRate</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How supply converts to energy and how energy drains; shapes the units of welfare and the sensitivity of production to diet">
                 <span class="param-label">Metabolism</span>
                 <select id="mechanic_metabolism" style="width:140px">
-                    <option value="classic">classic</option>
-                    <option value="linear">linear</option>
-                    <option value="dietBalance">dietBalance</option>
+                    <option value="classic" title="Energy gain = consumed x deficit; nonlinear (higher intake when more depleted); historical default, all golden trajectories captured under this">classic</option>
+                    <option value="linear" title="1 unit consumed = 1 unit energy, capped at capacity; makes energy directly comparable to production output for value accounting">linear</option>
+                    <option value="dietBalance" title="Classic conversion but production multiplier scales with fraction of resource types the agent currently holds a meaningful reserve of">dietBalance</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How each agent prices each resource against its own metabolic need; the shape of this curve sets local valuation dispersion and thus trade surplus">
                 <span class="param-label">Valuation</span>
                 <select id="mechanic_valuation" style="width:140px">
-                    <option value="needOverHoldings">needOverHoldings</option>
-                    <option value="linearNeedOverHoldings">linearNeedOverHoldings</option>
-                    <option value="needOnly">needOnly</option>
+                    <option value="needOverHoldings" title="sqrt(unmet need / holdings); damps extremes so a single starving agent cannot dominate the local mean; historical default">needOverHoldings</option>
+                    <option value="linearNeedOverHoldings" title="Unmet need / holdings with no sqrt damping; wider local dispersion, more surplus generated per trade">linearNeedOverHoldings</option>
+                    <option value="needOnly" title="sqrt(unmet need) ignoring holdings entirely; isolates the scarcity channel, removes the holdings-feedback effect">needOnly</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How a trade inventor sets the exchange rate at founding; controls whether margin tracks genuine coordination value or is a fixed cost (postedTrades only)">
                 <span class="param-label">Pricing</span>
                 <select id="mechanic_pricing" style="width:140px">
-                    <option value="dispersionSpread">dispersionSpread</option>
-                    <option value="fixedMargin">fixedMargin</option>
+                    <option value="dispersionSpread" title="Spread = surplus_multiplier x local valuation dispersion; prices congruent with local heterogeneity (Ostrom design principle 2); historical default">dispersionSpread</option>
+                    <option value="fixedMargin" title="Spread = surplus_multiplier x mean / 2; margin is fixed regardless of local heterogeneity; tests whether rent alone (not gains from trade) drives hierarchy">fixedMargin</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="When and how agents reproduce; the evolutionary channel through which socialReach and productivity are selected">
                 <span class="param-label">Reproduction</span>
                 <select id="mechanic_reproduction" style="width:140px">
-                    <option value="asexualSplit">asexualSplit</option>
-                    <option value="asexualSplitCooldown">asexualSplitCooldown</option>
-                    <option value="sexualBlend">sexualBlend</option>
-                    <option value="none">none</option>
+                    <option value="asexualSplit" title="Fission above energy threshold; child inherits half parent energy and spawns 5-30 px away; historical default">asexualSplit</option>
+                    <option value="asexualSplitCooldown" title="Like asexualSplit but adds a per-agent cooldown (reproductionCooldownTicks) between births; needed when diet completion makes energy trivially abundant">asexualSplitCooldown</option>
+                    <option value="sexualBlend" title="Two energy-ready agents within reach; traits blended then mutated; experimental, not covered by golden trajectories">sexualBlend</option>
+                    <option value="none" title="No reproduction; fixed-population control for isolating evolutionary effects">none</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="When a trade is retired for inactivity; the retirement policy quantises lifespan data, so softer policies exist for survival analysis (postedTrades only)">
                 <span class="param-label">Lifecycle</span>
                 <select id="mechanic_lifecycle" style="width:140px">
-                    <option value="idleWindow">idleWindow</option>
-                    <option value="graceCounter">graceCounter</option>
-                    <option value="never">never</option>
+                    <option value="idleWindow" title="Retire if not invoked on both sides in one clear_trades_every window; lifespan is quantised by that window; historical default">idleWindow</option>
+                    <option value="graceCounter" title="Tolerate 3 consecutive quiet windows before retiring; de-quantises lifespan so measured duration reflects usage rather than cleanup cadence">graceCounter</option>
+                    <option value="never" title="Never retire any trade; isolates the effect of the retirement policy itself as a control">never</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="How resource concentrations are laid out across the world grid at Reset; the primary axis for economic geography experiments">
                 <span class="param-label">Terrain</span>
                 <select id="mechanic_terrain" style="width:140px">
-                    <option value="wavy">wavy</option>
-                    <option value="randomResource">randomResource</option>
-                    <option value="stripes">stripes</option>
-                    <option value="slabs">slabs</option>
-                    <option value="regionalGroups">regionalGroups</option>
-                    <option value="regionalGroupsWavy">regionalGroupsWavy</option>
-                    <option value="regionalGroupsRandom">regionalGroupsRandom</option>
-                    <option value="uniform">uniform</option>
+                    <option value="wavy" title="Smooth overlapping regions from interference of sine waves, thresholded by undulation_cutuff; soft boundaries; historical default">wavy</option>
+                    <option value="randomResource" title="Each cell's dominant resource drawn independently at random; no spatial correlation">randomResource</option>
+                    <option value="stripes" title="Alternating vertical stripes, one per resource">stripes</option>
+                    <option value="slabs" title="Solid vertical slabs of equal width, one per resource">slabs</option>
+                    <option value="regionalGroups" title="numVillages vertical regions each with a disjoint set of resources at flat concentration; pairs with villages population for the half-diet experiment">regionalGroups</option>
+                    <option value="regionalGroupsWavy" title="Like regionalGroups but with wavy noise texture within each resource region">regionalGroupsWavy</option>
+                    <option value="regionalGroupsRandom" title="Like regionalGroups but with random-cell texture within each resource region">regionalGroupsRandom</option>
+                    <option value="uniform" title="All cells carry equal concentration of all resources; no spatial gradient or specialisation">uniform</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="Where the founding population is placed at world initialization; only shapes the founding generation, reproduction still drifts over time">
                 <span class="param-label">Population</span>
                 <select id="mechanic_population" style="width:140px">
-                    <option value="uniform">uniform</option>
-                    <option value="villages">villages</option>
+                    <option value="uniform" title="Founders placed uniformly at random across the map; historical default">uniform</option>
+                    <option value="villages" title="Founders clustered in numVillages Gaussian communities (villageSpread px sd) evenly spaced horizontally">villages</option>
                 </select>
             </div>
-            <div class="param-row">
+            <div class="param-row" data-tooltip="Distance cost applied to trade invocation payouts at settlement; withheld fraction goes into trade supply, seeding hierarchy (postedTrades only)">
                 <span class="param-label">Matching</span>
                 <select id="mechanic_matching" style="width:140px">
-                    <option value="frictionless">frictionless</option>
-                    <option value="distanceFriction">distanceFriction</option>
+                    <option value="frictionless" title="No distance cost; historical default">frictionless</option>
+                    <option value="distanceFriction" title="Rising fraction of payout withheld as pairwise distance grows; controlled by tradeFrictionSteepness and tradeFrictionMaxFraction">distanceFriction</option>
                 </select>
             </div>
         </div>
