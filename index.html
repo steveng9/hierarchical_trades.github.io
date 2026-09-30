@@ -10,7 +10,125 @@
 <body>
     <canvas id="gameWorld" width="1330" height="3190"></canvas>
     <div id="controlPanel">
-        <div id="db" class="db-status">Database</div>
+        <button type="button" onclick="reset()">Reset Simulation</button>
+        <button type="button" onclick="resetNewSeed()">Reset with New Seed</button>
+        <button type="button" onclick="pause()">Pause / Play (Space)</button>
+        <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
+        <button type="button" onclick="clearSelection()">Clear Selection</button>
+        <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
+        <button type="button" id="networkViewBtn" onclick="cycleNetworkView()" hidden>Network: OFF</button>
+
+        <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
+            <span style="font-size:12px;">Find human:</span>
+            <input type="number" id="human_lookup" placeholder="ID" min="0"
+                   style="width:60px;padding:2px 4px;font-size:12px;"
+                   onkeydown="if(event.key==='Enter') lookupHuman()">
+            <button class="btn-small" onclick="lookupHuman()">Go</button>
+            <span id="human_lookup_status" style="font-size:11px;color:#888;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
+            <span style="font-size:12px;">Find trade:</span>
+            <input type="number" id="trade_lookup" placeholder="ID" min="0"
+                   style="width:60px;padding:2px 4px;font-size:12px;"
+                   onkeydown="if(event.key==='Enter') lookupTrade()">
+            <button class="btn-small" onclick="lookupTrade()">Go</button>
+            <span id="trade_lookup_status" style="font-size:11px;color:#888;"></span>
+        </div>
+
+        <!-- Mechanics selectors -->
+        <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
+            <h3>Mechanics</h3>
+            <div class="param-row" data-tooltip="How trades happen; postedTrades = explicit invented norms with posted rates, managed supplies, and hierarchical stacking; pairwise = direct bilateral swaps on a social network, hierarchy emerges through hubs">
+                <span class="param-label">Exchange</span>
+                <select id="mechanic_exchange" style="width:140px">
+                    <option value="postedTrades" title="Trades are explicit invented objects: posted rates visible within reach, managed supplies, stacked into hierarchies; historical default">postedTrades</option>
+                    <option value="pairwise" title="Agents swap directly with network neighbors at rates from their own valuations; no trade objects, hierarchy emerges implicitly through broker hubs">pairwise</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How the pairwise social network is wired at birth and maintained over time (pairwise exchange only)">
+                <span class="param-label">Link formation</span>
+                <select id="mechanic_linkFormation" style="width:140px">
+                    <option value="localProbability" title="Each newborn links to each agent within reach with probability linkProbability; stable, strictly local network; historical default">localProbability</option>
+                    <option value="triadicClosure" title="Each newborn links to its parent then linksPerBirth-1 friends-of-parent; grows clustered, village-like cliques">triadicClosure</option>
+                    <option value="parentNearest" title="Each newborn links to its parent then the linksPerBirth-1 nearest agents; reach plays no role, purely geographic">parentNearest</option>
+                    <option value="usageRewiring" title="Wires like localProbability at birth; idle links drop after linkIdleTicks; brokers can introduce their supplier and customer to each other">usageRewiring</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How an agent chooses which trade to invoke for a given resource pair (postedTrades exchange only)">
+                <span class="param-label">Trade selection</span>
+                <select id="mechanic_tradeSelection" style="width:140px">
+                    <option value="invokeAll" title="Invoke every trade whose posted rate beats personal valuation; no ranking between competing trades; historical default">invokeAll</option>
+                    <option value="bestRate" title="Invoke only the single best-rate trade; with tradeLoyaltyThreshold > 0, agent sticks unless a competitor beats current rate by that fraction">bestRate</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How supply converts to energy and how energy drains; shapes the units of welfare and the sensitivity of production to diet">
+                <span class="param-label">Metabolism</span>
+                <select id="mechanic_metabolism" style="width:140px">
+                    <option value="classic" title="Energy gain = consumed x deficit; nonlinear (higher intake when more depleted); historical default, all golden trajectories captured under this">classic</option>
+                    <option value="linear" title="1 unit consumed = 1 unit energy, capped at capacity; makes energy directly comparable to production output for value accounting">linear</option>
+                    <option value="dietBalance" title="Classic conversion but production multiplier scales with fraction of resource types the agent currently holds a meaningful reserve of">dietBalance</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How each agent prices each resource against its own metabolic need; the shape of this curve sets local valuation dispersion and thus trade surplus">
+                <span class="param-label">Valuation</span>
+                <select id="mechanic_valuation" style="width:140px">
+                    <option value="needOverHoldings" title="sqrt(unmet need / holdings); damps extremes so a single starving agent cannot dominate the local mean; historical default">needOverHoldings</option>
+                    <option value="linearNeedOverHoldings" title="Unmet need / holdings with no sqrt damping; wider local dispersion, more surplus generated per trade">linearNeedOverHoldings</option>
+                    <option value="needOnly" title="sqrt(unmet need) ignoring holdings entirely; isolates the scarcity channel, removes the holdings-feedback effect">needOnly</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How a trade inventor sets the exchange rate at founding; controls whether margin tracks genuine coordination value or is a fixed cost (postedTrades only)">
+                <span class="param-label">Pricing</span>
+                <select id="mechanic_pricing" style="width:140px">
+                    <option value="dispersionSpread" title="Spread = surplus_multiplier x local valuation dispersion; prices congruent with local heterogeneity (Ostrom design principle 2); historical default">dispersionSpread</option>
+                    <option value="fixedMargin" title="Spread = surplus_multiplier x mean / 2; margin is fixed regardless of local heterogeneity; tests whether rent alone (not gains from trade) drives hierarchy">fixedMargin</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="When and how agents reproduce; the evolutionary channel through which socialReach and productivity are selected">
+                <span class="param-label">Reproduction</span>
+                <select id="mechanic_reproduction" style="width:140px">
+                    <option value="asexualSplit" title="Fission above energy threshold; child inherits half parent energy and spawns 5-30 px away; historical default">asexualSplit</option>
+                    <option value="asexualSplitCooldown" title="Like asexualSplit but adds a per-agent cooldown (reproductionCooldownTicks) between births; needed when diet completion makes energy trivially abundant">asexualSplitCooldown</option>
+                    <option value="sexualBlend" title="Two energy-ready agents within reach; traits blended then mutated; experimental, not covered by golden trajectories">sexualBlend</option>
+                    <option value="none" title="No reproduction; fixed-population control for isolating evolutionary effects">none</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="When a trade is retired for inactivity; the retirement policy quantises lifespan data, so softer policies exist for survival analysis (postedTrades only)">
+                <span class="param-label">Lifecycle</span>
+                <select id="mechanic_lifecycle" style="width:140px">
+                    <option value="idleWindow" title="Retire if not invoked on both sides in one clear_trades_every window; lifespan is quantised by that window; historical default">idleWindow</option>
+                    <option value="graceCounter" title="Tolerate 3 consecutive quiet windows before retiring; de-quantises lifespan so measured duration reflects usage rather than cleanup cadence">graceCounter</option>
+                    <option value="never" title="Never retire any trade; isolates the effect of the retirement policy itself as a control">never</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="How resource concentrations are laid out across the world grid at Reset; the primary axis for economic geography experiments">
+                <span class="param-label">Terrain</span>
+                <select id="mechanic_terrain" style="width:140px">
+                    <option value="wavy" title="Smooth overlapping regions from interference of sine waves, thresholded by undulation_cutuff; soft boundaries; historical default">wavy</option>
+                    <option value="randomResource" title="Each cell's dominant resource drawn independently at random; no spatial correlation">randomResource</option>
+                    <option value="stripes" title="Alternating vertical stripes, one per resource">stripes</option>
+                    <option value="slabs" title="Solid vertical slabs of equal width, one per resource">slabs</option>
+                    <option value="regionalGroups" title="numVillages vertical regions each with a disjoint set of resources at flat concentration; pairs with villages population for the half-diet experiment">regionalGroups</option>
+                    <option value="regionalGroupsWavy" title="Like regionalGroups but with wavy noise texture within each resource region">regionalGroupsWavy</option>
+                    <option value="regionalGroupsRandom" title="Like regionalGroups but with random-cell texture within each resource region">regionalGroupsRandom</option>
+                    <option value="uniform" title="All cells carry equal concentration of all resources; no spatial gradient or specialisation">uniform</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="Where the founding population is placed at world initialization; only shapes the founding generation, reproduction still drifts over time">
+                <span class="param-label">Population</span>
+                <select id="mechanic_population" style="width:140px">
+                    <option value="uniform" title="Founders placed uniformly at random across the map; historical default">uniform</option>
+                    <option value="villages" title="Founders clustered in numVillages Gaussian communities (villageSpread px sd) evenly spaced horizontally">villages</option>
+                </select>
+            </div>
+            <div class="param-row" data-tooltip="Distance cost applied to trade invocation payouts at settlement; withheld fraction goes into trade supply, seeding hierarchy (postedTrades only)">
+                <span class="param-label">Matching</span>
+                <select id="mechanic_matching" style="width:140px">
+                    <option value="frictionless" title="No distance cost; historical default">frictionless</option>
+                    <option value="distanceFriction" title="Rising fraction of payout withheld as pairwise distance grows; controlled by tradeFrictionSteepness and tradeFrictionMaxFraction">distanceFriction</option>
+                </select>
+            </div>
+        </div>
 
         <p>Simulation Parameters</p>
         <div id="parameters">
@@ -311,101 +429,6 @@
 
         </div>
 
-        <!-- Mechanics selectors -->
-        <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
-            <h3>Mechanics</h3>
-            <div class="param-row" data-tooltip="How trades happen; postedTrades = explicit invented norms with posted rates, managed supplies, and hierarchical stacking; pairwise = direct bilateral swaps on a social network, hierarchy emerges through hubs">
-                <span class="param-label">Exchange</span>
-                <select id="mechanic_exchange" style="width:140px">
-                    <option value="postedTrades" title="Trades are explicit invented objects: posted rates visible within reach, managed supplies, stacked into hierarchies; historical default">postedTrades</option>
-                    <option value="pairwise" title="Agents swap directly with network neighbors at rates from their own valuations; no trade objects, hierarchy emerges implicitly through broker hubs">pairwise</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How the pairwise social network is wired at birth and maintained over time (pairwise exchange only)">
-                <span class="param-label">Link formation</span>
-                <select id="mechanic_linkFormation" style="width:140px">
-                    <option value="localProbability" title="Each newborn links to each agent within reach with probability linkProbability; stable, strictly local network; historical default">localProbability</option>
-                    <option value="triadicClosure" title="Each newborn links to its parent then linksPerBirth-1 friends-of-parent; grows clustered, village-like cliques">triadicClosure</option>
-                    <option value="parentNearest" title="Each newborn links to its parent then the linksPerBirth-1 nearest agents; reach plays no role, purely geographic">parentNearest</option>
-                    <option value="usageRewiring" title="Wires like localProbability at birth; idle links drop after linkIdleTicks; brokers can introduce their supplier and customer to each other">usageRewiring</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How an agent chooses which trade to invoke for a given resource pair (postedTrades exchange only)">
-                <span class="param-label">Trade selection</span>
-                <select id="mechanic_tradeSelection" style="width:140px">
-                    <option value="invokeAll" title="Invoke every trade whose posted rate beats personal valuation; no ranking between competing trades; historical default">invokeAll</option>
-                    <option value="bestRate" title="Invoke only the single best-rate trade; with tradeLoyaltyThreshold > 0, agent sticks unless a competitor beats current rate by that fraction">bestRate</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How supply converts to energy and how energy drains; shapes the units of welfare and the sensitivity of production to diet">
-                <span class="param-label">Metabolism</span>
-                <select id="mechanic_metabolism" style="width:140px">
-                    <option value="classic" title="Energy gain = consumed x deficit; nonlinear (higher intake when more depleted); historical default, all golden trajectories captured under this">classic</option>
-                    <option value="linear" title="1 unit consumed = 1 unit energy, capped at capacity; makes energy directly comparable to production output for value accounting">linear</option>
-                    <option value="dietBalance" title="Classic conversion but production multiplier scales with fraction of resource types the agent currently holds a meaningful reserve of">dietBalance</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How each agent prices each resource against its own metabolic need; the shape of this curve sets local valuation dispersion and thus trade surplus">
-                <span class="param-label">Valuation</span>
-                <select id="mechanic_valuation" style="width:140px">
-                    <option value="needOverHoldings" title="sqrt(unmet need / holdings); damps extremes so a single starving agent cannot dominate the local mean; historical default">needOverHoldings</option>
-                    <option value="linearNeedOverHoldings" title="Unmet need / holdings with no sqrt damping; wider local dispersion, more surplus generated per trade">linearNeedOverHoldings</option>
-                    <option value="needOnly" title="sqrt(unmet need) ignoring holdings entirely; isolates the scarcity channel, removes the holdings-feedback effect">needOnly</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How a trade inventor sets the exchange rate at founding; controls whether margin tracks genuine coordination value or is a fixed cost (postedTrades only)">
-                <span class="param-label">Pricing</span>
-                <select id="mechanic_pricing" style="width:140px">
-                    <option value="dispersionSpread" title="Spread = surplus_multiplier x local valuation dispersion; prices congruent with local heterogeneity (Ostrom design principle 2); historical default">dispersionSpread</option>
-                    <option value="fixedMargin" title="Spread = surplus_multiplier x mean / 2; margin is fixed regardless of local heterogeneity; tests whether rent alone (not gains from trade) drives hierarchy">fixedMargin</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="When and how agents reproduce; the evolutionary channel through which socialReach and productivity are selected">
-                <span class="param-label">Reproduction</span>
-                <select id="mechanic_reproduction" style="width:140px">
-                    <option value="asexualSplit" title="Fission above energy threshold; child inherits half parent energy and spawns 5-30 px away; historical default">asexualSplit</option>
-                    <option value="asexualSplitCooldown" title="Like asexualSplit but adds a per-agent cooldown (reproductionCooldownTicks) between births; needed when diet completion makes energy trivially abundant">asexualSplitCooldown</option>
-                    <option value="sexualBlend" title="Two energy-ready agents within reach; traits blended then mutated; experimental, not covered by golden trajectories">sexualBlend</option>
-                    <option value="none" title="No reproduction; fixed-population control for isolating evolutionary effects">none</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="When a trade is retired for inactivity; the retirement policy quantises lifespan data, so softer policies exist for survival analysis (postedTrades only)">
-                <span class="param-label">Lifecycle</span>
-                <select id="mechanic_lifecycle" style="width:140px">
-                    <option value="idleWindow" title="Retire if not invoked on both sides in one clear_trades_every window; lifespan is quantised by that window; historical default">idleWindow</option>
-                    <option value="graceCounter" title="Tolerate 3 consecutive quiet windows before retiring; de-quantises lifespan so measured duration reflects usage rather than cleanup cadence">graceCounter</option>
-                    <option value="never" title="Never retire any trade; isolates the effect of the retirement policy itself as a control">never</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="How resource concentrations are laid out across the world grid at Reset; the primary axis for economic geography experiments">
-                <span class="param-label">Terrain</span>
-                <select id="mechanic_terrain" style="width:140px">
-                    <option value="wavy" title="Smooth overlapping regions from interference of sine waves, thresholded by undulation_cutuff; soft boundaries; historical default">wavy</option>
-                    <option value="randomResource" title="Each cell's dominant resource drawn independently at random; no spatial correlation">randomResource</option>
-                    <option value="stripes" title="Alternating vertical stripes, one per resource">stripes</option>
-                    <option value="slabs" title="Solid vertical slabs of equal width, one per resource">slabs</option>
-                    <option value="regionalGroups" title="numVillages vertical regions each with a disjoint set of resources at flat concentration; pairs with villages population for the half-diet experiment">regionalGroups</option>
-                    <option value="regionalGroupsWavy" title="Like regionalGroups but with wavy noise texture within each resource region">regionalGroupsWavy</option>
-                    <option value="regionalGroupsRandom" title="Like regionalGroups but with random-cell texture within each resource region">regionalGroupsRandom</option>
-                    <option value="uniform" title="All cells carry equal concentration of all resources; no spatial gradient or specialisation">uniform</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="Where the founding population is placed at world initialization; only shapes the founding generation, reproduction still drifts over time">
-                <span class="param-label">Population</span>
-                <select id="mechanic_population" style="width:140px">
-                    <option value="uniform" title="Founders placed uniformly at random across the map; historical default">uniform</option>
-                    <option value="villages" title="Founders clustered in numVillages Gaussian communities (villageSpread px sd) evenly spaced horizontally">villages</option>
-                </select>
-            </div>
-            <div class="param-row" data-tooltip="Distance cost applied to trade invocation payouts at settlement; withheld fraction goes into trade supply, seeding hierarchy (postedTrades only)">
-                <span class="param-label">Matching</span>
-                <select id="mechanic_matching" style="width:140px">
-                    <option value="frictionless" title="No distance cost; historical default">frictionless</option>
-                    <option value="distanceFriction" title="Rising fraction of payout withheld as pairwise distance grows; controlled by tradeFrictionSteepness and tradeFrictionMaxFraction">distanceFriction</option>
-                </select>
-            </div>
-        </div>
-
         <!-- Saved configurations -->
         <details id="saved-configs-panel" open>
             <summary>Saved Configurations</summary>
@@ -419,31 +442,6 @@
             </div>
             <div id="saved_configs_list"></div>
         </details>
-
-        <button type="button" onclick="reset()">Reset Simulation</button>
-        <button type="button" onclick="resetNewSeed()">Reset with New Seed</button>
-        <button type="button" onclick="pause()">Pause / Play (Space)</button>
-        <button type="button" onclick="toggleSocialReach()">Toggle Social Reach</button>
-        <button type="button" onclick="clearSelection()">Clear Selection</button>
-        <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
-        <button type="button" id="networkViewBtn" onclick="cycleNetworkView()" hidden>Network: OFF</button>
-
-        <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
-            <span style="font-size:12px;">Find human:</span>
-            <input type="number" id="human_lookup" placeholder="ID" min="0"
-                   style="width:60px;padding:2px 4px;font-size:12px;"
-                   onkeydown="if(event.key==='Enter') lookupHuman()">
-            <button class="btn-small" onclick="lookupHuman()">Go</button>
-            <span id="human_lookup_status" style="font-size:11px;color:#888;"></span>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
-            <span style="font-size:12px;">Find trade:</span>
-            <input type="number" id="trade_lookup" placeholder="ID" min="0"
-                   style="width:60px;padding:2px 4px;font-size:12px;"
-                   onkeydown="if(event.key==='Enter') lookupTrade()">
-            <button class="btn-small" onclick="lookupTrade()">Go</button>
-            <span id="trade_lookup_status" style="font-size:11px;color:#888;"></span>
-        </div>
     </div>
 
     <script>
