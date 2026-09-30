@@ -39,6 +39,16 @@ export function distance(a, b, wrap) {
     return Math.sqrt(dx ** 2 + dy ** 2);
 }
 
+/**
+ * Constrain a spawn coordinate to the map: wrap it around the far edge when `params.wrapped`
+ * (so lineages can drift all the way around instead of piling up at the boundary), otherwise
+ * clamp to the edge as before.
+ */
+export function placeOnMap(coord, size, wrapped) {
+    if (wrapped) return ((coord % size) + size) % size;
+    return Math.max(0, Math.min(size - 1, coord));
+}
+
 export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }

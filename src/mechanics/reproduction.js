@@ -8,21 +8,11 @@
  *
  * Interface: tryReproduce(human, sim) -> Human|null
  */
-import {wrapDelta} from '../core/mathutil.js';
+import {wrapDelta, placeOnMap as place} from '../core/mathutil.js';
 
 /** Multiplicative Gaussian mutation, floored so a trait can never reach zero or invert. */
 function mutate(rng, value, rate) {
     return Math.max(0.001, value * (1 + rng.normal(0, rate)));
-}
-
-/**
- * Constrain a spawn coordinate to the map: wrap it around the far edge when `params.wrapped`
- * (so lineages can drift all the way around instead of piling up at the boundary), otherwise
- * clamp to the edge as before.
- */
-function place(coord, size, wrapped) {
-    if (wrapped) return ((coord % size) + size) % size;
-    return Math.max(0, Math.min(size - 1, coord));
 }
 
 /** Midpoint of two parents, short way around the seam when wrapped — plain averaging would

@@ -44,8 +44,7 @@ node src/experiment/cli.js query --experiment g1-value-accounting --metric core.
 ### Tests
 
 ```bash
-npm test               # 67 tests, ~60s
-npm run test:slow      # adds the 1000-tick golden trajectory
+npm test               # ~60s
 ```
 
 ---
@@ -81,7 +80,7 @@ src/
   render/       Canvas drawing. Reads the kernel, never mutates it.
   browser/      Interactive shell: app loop, context, DOM helpers.
 
-test/           67 tests, including golden-trajectory regression fixtures.
+test/           tests: determinism, conservation, relevance, and the UI shell.
 tools/          Provenance tooling.
 attic/          Pre-refactor code, not wired in. See attic/README.md.
 ```
@@ -102,16 +101,9 @@ Every run is fully determined by `(git SHA, scenario, parameters, seed)`.
 - **Provenance is recorded**, including whether the working tree was dirty. A result marked
   `code_dirty = 1` came from uncommitted code and should not go in a paper.
 
-### Golden trajectories — please read before changing the kernel
+### Keep the RNG stream stable
 
-`test/fixtures/golden-*.json` were captured from the **pre-refactor** flat scripts with a
-seeded RNG, and `test/golden.test.js` asserts the current kernel reproduces them tick for
-tick. This is what makes it safe to refactor or optimise the simulation.
-
-If a golden test fails, the dynamics changed. That is only acceptable as a deliberate
-decision — in which case recapture the fixture in the same commit and say why in the message.
-
-Two consequences worth internalising:
+The kernel was refactored against recorded trajectories that have since been retired. The habits that protected them still help reproducibility:
 
 1. **Do not "clean up" the unconditional random draws in the `Human` constructor.** They look
    wasteful and are load-bearing; the comment there explains why.

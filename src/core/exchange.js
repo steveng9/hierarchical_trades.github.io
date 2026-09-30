@@ -19,6 +19,7 @@
  */
 import {SocialNetwork} from './network.js';
 import {EVENTS} from './events.js';
+import {distance} from './mathutil.js';
 
 // ======================================================================================
 // Posted trades (historical)
@@ -225,6 +226,8 @@ export class PairwiseExchange {
         this.ctx = {sim, world, network: this.network};
         this.totalSwaps = 0;
         this.totalVolume = new Float64Array(this.numResources);
+        /** Cumulative units of each resource lost to swap friction. */
+        this.totalLost = new Float64Array(this.numResources);
         /** Swaps made in the most recent tick. */
         this.lastTickSwaps = 0;
 
@@ -314,8 +317,9 @@ export class PairwiseExchange {
         const {sim} = this;
         const {buyer, seller, r, s, amountR, amountS} = deal;
 
-        this.transfer(edge, seller, buyer, r, amountR);
-        this.transfer(edge, buyer, seller, s, amountS);
+        const friction = this.frictionAcross(edge);
+        this.transfer(edge, seller, buyer, r, amountR, friction);
+        this.transfer(edge, buyer, seller, s, amountS, friction);
         this.refreshOwn(buyer);
         this.refreshOwn(seller);
         this.totalSwaps++;
@@ -329,13 +333,31 @@ export class PairwiseExchange {
         }
     }
 
+    /**
+     * Fraction of each good lost in transit on a swap across `edge`: the flat
+     * `pairwiseFriction`, plus a distance-dependent part that ramps toward 1 as the two agents
+     * sit further apart relative to the larger of their reaches. Capped at 0.95.
+     */
+    frictionAcross(edge) {
+        const {pairwiseFriction, pairwiseDistanceFriction} = this.sim.params;
+        if (pairwiseDistanceFriction === 0) return pairwiseFriction;
+        const {a, b} = edge;
+        const reach = Math.max(a.socialReach, b.socialReach);
+        const d = distance(a, b, this.world.wrapDims());
+        const ramp = reach > 0 ? 1 - Math.exp(-pairwiseDistanceFriction * d / reach) : 1;
+        return Math.min(pairwiseFriction + (1 - pairwiseFriction) * ramp, 0.95);
+    }
+
     /** The affordable swap across `edge` with the widest rate gap, sized by `sizeSwap`, or null. */
     bestDeal(edge) {
         const {sim, numResources} = this;
         const {a, b} = edge;
         const effA = a.exchange.effective;
         const effB = b.exchange.effective;
-        const minGap = sim.params.minExchangeLogGap;
+        // Each swap loses a fraction of both goods in transit, so a round trip costs twice
+        // -ln(1 - friction) in log terms; the gap must clear that before a swap pays.
+        const friction = this.frictionAcross(edge);
+        const minGap = sim.params.minExchangeLogGap - 2 * Math.log(1 - friction);
         const quantity = sim.params.tradeAmountPerInvocation;
 
         let chosen = null;
@@ -363,7 +385,7 @@ export class PairwiseExchange {
         if (!chosen) return null;
 
         const {buyer, seller, r, s, deal, affordable} = chosen;
-        const scale = this.sizeSwap(buyer, seller, r, s, deal, affordable);
+        const scale = this.sizeSwap(buyer, seller, r, s, deal, affordable, friction);
         const amountR = deal.amountR * scale;
         if (!(amountR > MIN_SWAP)) return null;
         return {buyer, seller, r, s, amountR, amountS: deal.amountS * scale, logPrice: deal.logPrice};
@@ -384,12 +406,13 @@ export class PairwiseExchange {
      * applies. A broker whose valuation of r is inherited (resale) rather than own sees no change
      * from the swap and trades the full amount, as it should.
      */
-    sizeSwap(buyer, seller, r, s, deal, maxScale) {
+    sizeSwap(buyer, seller, r, s, deal, maxScale, friction) {
+        const kept = 1 - friction;
         const gapAt = scale => {
             const dR = deal.amountR * scale;
             const dS = deal.amountS * scale;
-            const mBuyer = this.hypotheticalRate(buyer, r, s, dR, -dS);
-            const mSeller = this.hypotheticalRate(seller, r, s, -dR, dS);
+            const mBuyer = this.hypotheticalRate(buyer, r, s, dR * kept, -dS);
+            const mSeller = this.hypotheticalRate(seller, r, s, -dR, dS * kept);
             return mBuyer - mSeller;
         };
         if (gapAt(maxScale) > 0) return maxScale;
@@ -420,14 +443,23 @@ export class PairwiseExchange {
         return valueR - valueS;
     }
 
-    transfer(edge, from, to, r, amount) {
+    /**
+     * Move `amount` of r from `from` to `to`. A fraction `friction` is lost in transit:
+     * the sender gives up all of `amount`, the receiver gets the rest, and the difference is
+     * written off in the ledger so conservation still balances.
+     */
+    transfer(edge, from, to, r, amount, friction) {
+        const lost = amount * friction;
+        const delivered = amount - lost;
         from.supply[r] -= amount;
-        to.supply[r] += amount;
+        to.supply[r] += delivered;
+        if (lost > 0) this.sim.ledger.recordLost(r, lost);
+        this.totalLost[r] += lost;
         from.exchange.sold[r] += amount;
-        to.exchange.bought[r] += amount;
-        to.volumeTradedFor[r] += amount;
-        this.totalVolume[r] += amount;
-        edge.recordFlow(from, r, amount, this.sim.tick, this.network.flowMemoryTicks);
+        to.exchange.bought[r] += delivered;
+        to.volumeTradedFor[r] += delivered;
+        this.totalVolume[r] += delivered;
+        edge.recordFlow(from, r, delivered, this.sim.tick, this.network.flowMemoryTicks);
     }
 
     /** Pairwise exchange holds nothing outside agents. */

@@ -45,7 +45,6 @@ export class Human {
         const energy = options.energy ?? params.initialEnergy;
 
         this.removeFromWorld = false;
-        this.isSpawning = options.isSpawning ?? false;
         this.birthTick = sim.tick;
         this.generation = 0;
         this.parentIds = [];
@@ -87,8 +86,6 @@ export class Human {
     // -- lifecycle -------------------------------------------------------------------
 
     update() {
-        if (this.isSpawning) return;
-
         this.spendEnergy(this.sim.params.basicEnergyDepletion);
         this.age++;
 

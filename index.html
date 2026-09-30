@@ -18,23 +18,6 @@
         <button type="button" id="levelDisplayBtn" onclick="cycleTradeLevel()">Level Display: OFF</button>
         <button type="button" id="networkViewBtn" onclick="cycleNetworkView()" hidden>Network: OFF</button>
 
-        <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
-            <span style="font-size:12px;">Find human:</span>
-            <input type="number" id="human_lookup" placeholder="ID" min="0"
-                   style="width:60px;padding:2px 4px;font-size:12px;"
-                   onkeydown="if(event.key==='Enter') lookupHuman()">
-            <button class="btn-small" onclick="lookupHuman()">Go</button>
-            <span id="human_lookup_status" style="font-size:11px;color:#888;"></span>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
-            <span style="font-size:12px;">Find trade:</span>
-            <input type="number" id="trade_lookup" placeholder="ID" min="0"
-                   style="width:60px;padding:2px 4px;font-size:12px;"
-                   onkeydown="if(event.key==='Enter') lookupTrade()">
-            <button class="btn-small" onclick="lookupTrade()">Go</button>
-            <span id="trade_lookup_status" style="font-size:11px;color:#888;"></span>
-        </div>
-
         <!-- Mechanics selectors -->
         <div id="mechanics-panel" class="parameter-section" style="margin-top:10px;">
             <h3>Mechanics</h3>
@@ -130,6 +113,23 @@
             </div>
         </div>
 
+        <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
+            <span style="font-size:12px;">Find human:</span>
+            <input type="number" id="human_lookup" placeholder="ID" min="0"
+                   style="width:60px;padding:2px 4px;font-size:12px;"
+                   onkeydown="if(event.key==='Enter') lookupHuman()">
+            <button class="btn-small" onclick="lookupHuman()">Go</button>
+            <span id="human_lookup_status" style="font-size:11px;color:#888;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
+            <span style="font-size:12px;">Find trade:</span>
+            <input type="number" id="trade_lookup" placeholder="ID" min="0"
+                   style="width:60px;padding:2px 4px;font-size:12px;"
+                   onkeydown="if(event.key==='Enter') lookupTrade()">
+            <button class="btn-small" onclick="lookupTrade()">Go</button>
+            <span id="trade_lookup_status" style="font-size:11px;color:#888;"></span>
+        </div>
+
         <p>Simulation Parameters</p>
         <div id="parameters">
 
@@ -179,9 +179,15 @@
                     </div>
                     <div class="param-row" data-tooltip="Founding population size spawned at Reset">
                         <span class="param-label">Initial humans</span>
-                        <input type="range" id="initialHumans" min="20" max="500" step="10"
+                        <input type="range" id="initialHumans" min="20" max="1500" step="10"
                                oninput="document.getElementById('initialHumans_val').textContent=this.value">
                         <span class="param-val" id="initialHumans_val"></span>
+                    </div>
+                    <div class="param-row" data-tooltip="Agents dropped in by one click on the forest; 1 lands exactly under the cursor, more form a normally distributed patch around it. Takes effect immediately, no Reset needed. Each new agent links into the network one at a time, like a birth">
+                        <span class="param-label">Agents per click</span>
+                        <input type="range" id="spawnCount" min="1" max="500" step="1"
+                               oninput="document.getElementById('spawnCount_val').textContent=this.value">
+                        <span class="param-val" id="spawnCount_val"></span>
                     </div>
                     <div class="check-row" data-tooltip="When on, harvesting depletes cell concentration and it regrows slowly; when off, resources are infinite">
                         <input type="checkbox" id="resourceDepletion">
@@ -405,6 +411,18 @@
                         <input type="range" id="minExchangeLogGap" min="0" max="0.5" step="0.01"
                                oninput="document.getElementById('minExchangeLogGap_val').textContent=parseFloat(this.value).toFixed(2)">
                         <span class="param-val" id="minExchangeLogGap_val"></span>
+                    </div>
+                    <div class="param-row" data-tooltip="Fraction of each good lost in transit on every swap (sender gives all, receiver gets the rest); also raises the gap needed to swap, so long relay chains pay it at every hop; 0 = lossless">
+                        <span class="param-label">Swap friction (loss)</span>
+                        <input type="range" id="pairwiseFriction" min="0" max="0.95" step="0.01"
+                               oninput="document.getElementById('pairwiseFriction_val').textContent=parseFloat(this.value).toFixed(2)">
+                        <span class="param-val" id="pairwiseFriction_val"></span>
+                    </div>
+                    <div class="param-row" data-tooltip="Extra loss per swap that grows with the distance between the two agents relative to their reach (1 - exp(-k * distance / reach)); makes long links costly; 0 = distance does not matter">
+                        <span class="param-label">Swap friction by distance</span>
+                        <input type="range" id="pairwiseDistanceFriction" min="0" max="10" step="0.1"
+                               oninput="document.getElementById('pairwiseDistanceFriction_val').textContent=parseFloat(this.value).toFixed(1)">
+                        <span class="param-val" id="pairwiseDistanceFriction_val"></span>
                     </div>
                     <div class="param-row" data-tooltip="E-folding decay time of each link's recent-flow record; drives the resource-flow overlay and usageRewiring link-dropout decisions">
                         <span class="param-label">Flow memory (ticks)</span>
@@ -654,7 +672,6 @@
                 });
             });
 
-            let isSpawning = false;
             let isSelecting = false;
 
             canvas.addEventListener("mousedown", function(e) {
@@ -667,8 +684,7 @@
                         isSelecting = true;
                         gameEngine.selection.beginSelection(x, y);
                     } else {
-                        isSpawning = true;
-                        gameEngine.selection.beginSpawn(x, y);
+                        gameEngine.selection.spawnAt(x, y);
                     }
                 }
             });
@@ -680,7 +696,6 @@
                 gameEngine.dragCapableGraphs.forEach(graph => graph.handleMouseMove(x, y));
                 if (x < canvas.width) {
                     if (isSelecting) gameEngine.selection.updateSelection(x, y);
-                    if (isSpawning) gameEngine.selection.updateSpawn(x, y);
                 }
             });
 
@@ -690,9 +705,7 @@
                 const y = e.clientY - rect.top;
                 gameEngine.dragCapableGraphs.forEach(graph => graph.handleMouseUp(x, y));
                 if (isSelecting) gameEngine.selection.finishSelection(x, y);
-                if (isSpawning) gameEngine.selection.finishSpawn(x, y);
                 isSelecting = false;
-                isSpawning = false;
             });
         };
     </script>

@@ -1,16 +1,15 @@
 /**
- * Click-and-drag interaction on the forest: rectangle selection, and spawning an agent whose
- * social reach is set by the drag distance.
+ * Interaction on the forest: shift-drag selects a rectangle of agents, and a plain click drops
+ * in `spawnCount` new agents (see core/spawn.js) with randomly drawn social reach.
  */
 import {PARAMS, gameEngine, sim} from '../browser/context.js';
+import {spawnCluster} from '../core/spawn.js';
 
 export class SelectionManager {
     constructor(forestView) {
         this.start = null;
         this.end = null;
-        this.isSpawning = false;
         this.isSelecting = false;
-        this.tempHuman = null;
         this.forest = forestView;   // view, not model: x/y are canvas coordinates
     }
 
@@ -23,15 +22,11 @@ export class SelectionManager {
         }
     }
 
-    beginSpawn(x, y) {
+    /** Drop the agents in at once, one at a time through the normal birth path. */
+    spawnAt(x, y) {
         if (x > PARAMS.margin && x < PARAMS.margin + PARAMS.forestwidth &&
             y > PARAMS.margin && y < PARAMS.margin + PARAMS.forestheight) {
-            this.start = {x, y};
-            this.end = {x, y};
-            this.isSpawning = true;
-            this.isSelecting = false;
-            this.tempHuman = sim.world.createHuman({x: x - this.forest.x, y: y - this.forest.y, reach: 0, isSpawning: true});
-            gameEngine.automata.add_human(this.tempHuman);
+            spawnCluster(sim.world, {x: x - this.forest.x, y: y - this.forest.y, count: PARAMS.spawnCount});
         }
     }
 
@@ -40,16 +35,8 @@ export class SelectionManager {
         this.end = {x, y};
     }
 
-    updateSpawn(x, y) {
-        if (!this.isSpawning || !this.tempHuman) return;
-        this.end = {x, y};
-        const dx = this.end.x - this.start.x;
-        const dy = this.end.y - this.start.y;
-        this.tempHuman.socialReach = Math.sqrt(dx * dx + dy * dy);
-    }
-
     finishSelection(x, y) {
-        if (!this.isSpawning && !this.isSelecting) return;
+        if (!this.isSelecting) return;
 
         const x1 = Math.min(this.start.x, this.end.x) - this.forest.x;
         const y1 = Math.min(this.start.y, this.end.y) - this.forest.y;
@@ -68,16 +55,6 @@ export class SelectionManager {
         this.start = null;
         this.end = null;
         this.isSelecting = false;
-    }
-
-    finishSpawn(x, y) {
-        if (!this.isSpawning && !this.tempHuman) return;
-        this.tempHuman.isSpawning = false;
-        this.tempHuman.discoverTradesAtBirth();
-        this.start = null;
-        this.end = null;
-        this.isSpawning = false;
-        this.tempHuman = null;
     }
 
     draw(ctx) {

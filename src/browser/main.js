@@ -35,11 +35,28 @@ function boot() {
     // configuration nobody chose.
     writeParameterInputs(defaultParams());
     watchMechanicSelectors();
+    watchLiveParameters();
 
     reset();
     app.start();
 
     console.log(`Hierarchical Trades — seed ${app.sim.params.seed}, fingerprint ${app.sim.paramsFingerprint}`);
+}
+
+/**
+ * Controls that act on the running simulation rather than waiting for Reset. Only for
+ * parameters that affect no dynamics by themselves, so changing one mid-run cannot break
+ * reproducibility of a configuration.
+ */
+const LIVE_PARAMETERS = ['spawnCount'];
+
+function watchLiveParameters() {
+    for (const key of LIVE_PARAMETERS) {
+        document.getElementById(key)?.addEventListener('input', event => {
+            const value = parseInt(event.target.value);
+            if (app?.sim && !Number.isNaN(value)) app.sim.params[key] = value;
+        });
+    }
 }
 
 /**

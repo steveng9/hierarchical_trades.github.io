@@ -10,7 +10,7 @@ import {PARAMS, gameEngine} from '../browser/context.js';
  * @param {{x:number,y:number}} origin  the forest view's top-left corner
  */
 export function drawHuman(ctx, human, origin) {
-    const color = human.isSpawning ? 'yellow' : '#FFFFFF';
+    const color = '#FFFFFF';
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
 

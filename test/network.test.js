@@ -189,3 +189,34 @@ test('usageRewiring drops links idle longer than linkIdleTicks, and introduces n
     }
     assert.ok(introductions > 0, 'expected at least one broker introduction');
 });
+
+// ---- manual spawning ---------------------------------------------------------------------
+
+import {spawnCluster, SPAWN_SPREAD} from '../src/core/spawn.js';
+
+test('spawnCluster: one agent lands on the cursor; a group is centred there and spread ~ sqrt(n)', () => {
+    const sim = new Simulation({params: {...small, forestwidth: 2000, forestheight: 2000, wrapped: false}, mechanics: pairwise('parentNearest')});
+    const [solo] = spawnCluster(sim.world, {x: 1000, y: 1000, count: 1, reach: 0});
+    assert.equal(solo.x, 1000);
+    assert.equal(solo.y, 1000);
+
+    const group = spawnCluster(sim.world, {x: 1000, y: 1000, count: 400, reach: 50});
+    const mean = group.reduce((s, h) => s + h.x, 0) / group.length;
+    const sd = Math.sqrt(group.reduce((s, h) => s + (h.x - mean) ** 2, 0) / group.length);
+    assert.ok(Math.abs(mean - 1000) < 10, `mean ${mean}`);
+    assert.ok(Math.abs(sd - SPAWN_SPREAD * Math.sqrt(399)) < 10, `sd ${sd}`);
+});
+
+for (const rule of ['triadicClosure', 'parentNearest']) {
+    test(`spawnCluster under ${rule}: every agent is wired, and group members link to each other`, () => {
+        const sim = new Simulation({params: {...small, linksPerBirth: 2}, mechanics: pairwise(rule)});
+        const group = spawnCluster(sim.world, {x: 200, y: 150, count: 40, reach: 60});
+        const net = sim.world.exchange.network;
+        const members = new Set(group);
+        assert.ok(group.every(h => net.degree(h) > 0), 'nobody is left unconnected');
+        let within = 0;
+        for (const h of group) for (const n of net.neighbors(h)) if (members.has(n)) within++;
+        assert.ok(within > 0, 'the group is wired to itself, not only to earlier agents');
+        assertNoDanglingEdges(sim);
+    });
+}
